@@ -11,23 +11,13 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Bumps = exports.PreRelease = exports.Outputs = exports.Inputs = void 0;
 var Inputs;
 (function (Inputs) {
-    Inputs["Bump"] = "bump";
-    Inputs["Prelabel"] = "prelabel";
-    Inputs["InitialVersion"] = "initial_version";
-    Inputs["PreRelease"] = "prerelease";
+    Inputs["IssueBody"] = "issue_body_json";
+    Inputs["Token"] = "pat_token";
 })(Inputs = exports.Inputs || (exports.Inputs = {}));
 var Outputs;
 (function (Outputs) {
     Outputs["Release"] = "release";
 })(Outputs = exports.Outputs || (exports.Outputs = {}));
-/*
-export enum PreRelease {
-  none = 0,
-  withBuildNumber,
-  withoutBuildNumber
-}
-
-*/
 var PreRelease;
 (function (PreRelease) {
     PreRelease["withBuildNumber"] = "withBuildNumber";
@@ -77,18 +67,14 @@ const constants_1 = __webpack_require__(105);
  * Helper to get all the inputs for the action
  */
 function getInputs() {
-    const bump = core.getInput(constants_1.Inputs.Bump);
-    const preRelease = core.getInput(constants_1.Inputs.PreRelease);
-    //const preReleaseStr = core.getInput(Inputs.PreRelease)
-    //const preRelease: PreRelease = parseInt(preReleaseStr) as PreRelease
-    const prelabel = core.getInput(constants_1.Inputs.Prelabel);
-    const initialVersion = core.getInput(constants_1.Inputs.InitialVersion);
-    core.debug(`Initial version ${initialVersion}`);
+    const issue_body = core.getInput(constants_1.Inputs.IssueBody);
+    core.debug(issue_body);
+    const parsed_body = JSON.parse(issue_body);
+    const pat_token = core.getInput(constants_1.Inputs.Token);
     const inputs = {
-        bump,
-        preRelease,
-        prelabel,
-        initialVersion: initialVersion ? initialVersion : '0.1.0'
+        members: parsed_body.members.split('\r\n'),
+        teams: parsed_body.teams.split('\r\n'),
+        pat_token
     };
     /**
        if (bump == null) {
@@ -150,55 +136,22 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
 const inputHelper = __importStar(__webpack_require__(480));
-const semver_1 = __webpack_require__(107);
+const team_1 = __webpack_require__(563);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            let isFirstRelease = false;
-            const semverInputs = inputHelper.getInputs();
-            core.debug(`Bump ${semverInputs.bump}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-            core.debug(`PreRelease ${semverInputs.preRelease}`);
-            core.debug(`Prelabel ${semverInputs.prelabel}`);
-            core.debug(`InitialVersion ${semverInputs.initialVersion}`);
-            const token = core.getInput('github_token', { required: true });
-            const octokit = github.getOctokit(token);
-            let release = {
-                data: {
-                    tag_name: semverInputs.initialVersion
-                }
-            };
-            try {
-                release = yield octokit.repos.getLatestRelease({
-                    repo: github.context.repo.repo,
-                    owner: github.context.repo.owner
-                });
-                core.debug(release.data.tag_name);
-            }
-            catch (e) {
-                if (e.status === 404) {
-                    isFirstRelease = true;
-                    core.debug(`No releases found for org: ${github.context.repo.owner}, repo: ${github.context.repo.repo}; using default version ${semverInputs.initialVersion}`);
-                    release = {
-                        data: {
-                            tag_name: semverInputs.initialVersion
-                        }
-                    };
-                }
-            }
-            const semver = new semver_1.Semver(release.data.tag_name, isFirstRelease, semverInputs.bump, semverInputs.preRelease, semverInputs.prelabel);
-            core.debug(`Semver is ${semver}`);
-            const newTag = semver.getNextVersion();
-            core.debug(`new tag = ${newTag}`);
-            release = yield octokit.repos.createRelease({
-                repo: github.context.repo.repo,
-                owner: github.context.repo.owner,
-                tag_name: newTag
-            });
-            core.debug(release.data.tag_name);
-            core.setOutput('release', release.data.tag_name);
+            const teamInputs = inputHelper.getInputs();
+            core.debug(`Members ${teamInputs.members}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+            core.debug(`Teams ${teamInputs.teams}`);
+            //const token = core.getInput('github_token', {required: true})
+            const octokit = github.getOctokit(teamInputs.pat_token);
+            const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams);
+            core.debug(`Team is ${team}`);
+            team.sync();
         }
         catch (error) {
-            core.setFailed(error.message);
+            core.error(`${JSON.stringify(error)}`);
+            core.setFailed(`${error.message}`);
         }
     });
 }
@@ -207,7 +160,7 @@ run();
 
 /***/ }),
 
-/***/ 107:
+/***/ 563:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -231,90 +184,89 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Semver = void 0;
-const constants_1 = __webpack_require__(105);
+exports.Team = void 0;
+//import {Bumps, PreRelease} from './constants'
 const core = __importStar(__webpack_require__(186));
-class Semver {
-    constructor(currentVersion, isFirstRelease, bump, preRelease, prelabel) {
-        if (!isFirstRelease &&
-            typeof bump === 'undefined' &&
-            typeof preRelease === 'undefined') {
-            throw Error('Invalid Semver Operation: At least one of Bump or PreRelease has to be defined or IsFirstRelease must be true');
-        }
-        this.currentVersion = currentVersion;
-        this.bump = bump;
-        if (this.bump !== constants_1.Bumps.final) {
-            this.preRelease = preRelease;
-        }
-        this.prelabel = prelabel ? prelabel : 'alpha';
-        this.isFirstRelease = isFirstRelease;
+//type OctoClientType = ReturnType<typeof github.getOctokit>
+class Team {
+    constructor(octokitClient, org, members, teamSlugs) {
+        this.octokitClient = octokitClient;
+        this.org = org;
+        this.teamSlugs = teamSlugs;
+        this.members = members;
     }
-    getNextVersion() {
-        const regexstr = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/gm;
-        const versionparts = this.currentVersion.split(regexstr).filter(s => {
-            return s !== null && s !== '';
+    find(org, team_slug) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('Finding team');
+            core.debug(`${team_slug}`);
+            core.debug(`${org}`);
+            const params = {
+                org,
+                team_slug
+            };
+            let res = {
+                data: {
+                    name: ''
+                }
+            };
+            try {
+                res = yield this.octokitClient.teams.getByName(params);
+            }
+            catch (e) {
+                core.debug(`xxxx ${e} ${JSON.stringify(params)}`);
+                if (e.status === 404) {
+                    core.debug(`xxxx ${e} ${JSON.stringify(params)} ${JSON.stringify(res)}`);
+                }
+            }
+            const { data: team } = res;
+            return team;
         });
-        core.debug(`Version Parts are ${versionparts}`);
-        if (versionparts != null) {
-            const parts = versionparts.slice(0, 3).map(s => parseInt(s));
-            core.debug(`Parts are ${parts}`);
-            if (this.bump === constants_1.Bumps.final && !versionparts[3]) {
-                throw Error('Invalid Semver Operation: Cannot do Bump Final and not have the previous release as a PreRelease');
+    }
+    addMembers(org, team_slug, members) {
+        return __awaiter(this, void 0, void 0, function* () {
+            for (const username of members) {
+                const params = {
+                    org,
+                    team_slug,
+                    username
+                };
+                core.debug(`Adding team members  ${JSON.stringify(params)}`);
+                let res = {
+                    data: {}
+                };
+                try {
+                    res = yield this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(params);
+                }
+                catch (e) {
+                    core.debug(`xxxx ${e}`);
+                    if (e.status === 404) {
+                        core.debug(`xxxx ${e} ${JSON.stringify(params)} ${JSON.stringify(res)}`);
+                    }
+                }
             }
-            const prebuild = versionparts[3]
-                ? versionparts[3].split('.')
-                : [this.prelabel, '0'];
-            core.debug(`prebuild is ${prebuild}`);
-            switch (this.bump) {
-                case constants_1.Bumps.major:
-                    if (!this.isFirstRelease) {
-                        ++parts[0];
-                        parts[1] = 0;
-                        parts[2] = 0;
-                    }
-                    //prebuild = []
-                    break;
-                case constants_1.Bumps.minor:
-                    if (!this.isFirstRelease) {
-                        ++parts[1];
-                        parts[2] = 0;
-                    }
-                    //prebuild = []
-                    break;
-                case constants_1.Bumps.patch:
-                    if (!this.isFirstRelease) {
-                        ++parts[2];
-                    }
-                    //prebuild = []
-                    break;
-                case constants_1.Bumps.final:
-                    break;
-                default:
-                    if (!this.preRelease && !this.isFirstRelease) {
-                        throw new Error(`Invalid Bump ${this.bump}`);
-                    }
+        });
+    }
+    sync() {
+        return __awaiter(this, void 0, void 0, function* () {
+            for (const teamSlug of this.teamSlugs) {
+                const team = yield this.find(this.org, teamSlug);
+                core.debug(`${JSON.stringify(team)}`);
+                yield this.addMembers(this.org, teamSlug, this.members);
             }
-            switch (this.preRelease) {
-                case constants_1.PreRelease.withBuildNumber:
-                    core.debug(`Prebuild is ${prebuild}`);
-                    if (prebuild.length === 2 && prebuild[0] === this.prelabel) {
-                        prebuild[1] = (parseInt(prebuild[1] ? prebuild[1] : '0') + 1).toString();
-                    }
-                    else {
-                        prebuild[0] = this.prelabel;
-                        prebuild[1] = '1';
-                    }
-                    break;
-            }
-            return this.preRelease
-                ? `${parts.join('.')}-${prebuild.join('.')}`
-                : `${parts.join('.')}`;
-        }
-        return this.currentVersion;
+        });
     }
 }
-exports.Semver = Semver;
+exports.Team = Team;
 
 
 /***/ }),

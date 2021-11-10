@@ -1,25 +1,21 @@
 import * as core from '@actions/core'
-import {Inputs, Bumps, PreRelease} from './constants'
-import {SemverInputs} from './version-inputs'
+import {Inputs} from './constants'
+import {TeamInputs} from './TeamInputs'
 
 /**
  * Helper to get all the inputs for the action
  */
-export function getInputs(): SemverInputs {
-  const bump: Bumps = core.getInput(Inputs.Bump) as Bumps
-  const preRelease = core.getInput(Inputs.PreRelease) as PreRelease
-  //const preReleaseStr = core.getInput(Inputs.PreRelease)
-  //const preRelease: PreRelease = parseInt(preReleaseStr) as PreRelease
-  const prelabel = core.getInput(Inputs.Prelabel)
-  const initialVersion = core.getInput(Inputs.InitialVersion)
-  core.debug(`Initial version ${initialVersion}`)
+export function getInputs(): TeamInputs {
+  const issue_body: string = core.getInput(Inputs.IssueBody)
+  core.debug(issue_body)
+  const parsed_body = JSON.parse(issue_body)
+  const pat_token: string = core.getInput(Inputs.Token)
 
-  const inputs = {
-    bump,
-    preRelease,
-    prelabel,
-    initialVersion: initialVersion ? initialVersion : '0.1.0'
-  } as SemverInputs
+  const inputs: TeamInputs = {
+    members: parsed_body.members.split('\r\n'),
+    teams: parsed_body.teams.split('\r\n'),
+    pat_token
+  }
 
   /**
      if (bump == null) {

@@ -1,35 +1,15 @@
-name: 'Semver'
-description: 'An action for managing releases using semantic versioning.\n
-  This is based on '
+name: 'Themis'
+description: 'An action for automating governance of Organization\n '
 inputs:
-  github_token:
-    description: The GitHub token used to create an authenticated client
-    default: ${{ github.token }}
-    required: false
-  bump:  # Bump the version number semantically.
-    description: 'Bump the version number semantically. The value must be one of: \n
-      major: Bump the major version number, e.g. 1.0.0 -> 2.0.0.\n
-      minor: Bump the minor version number, e.g. 0.1.0 -> 0.2.0.\n
-      patch: Bump the patch version number, e.g. 0.0.1 -> 0.0.2.\n
-      final: Promote the version to a final version, e.g. 1.0.0-rc.1 -> 1.0.0.'
-    required: false
-  prerelease: #Denotes a pre-release
-    description: 'Is this a pre-release. \n
-      Pre-release are labelled with a label and build number e.g. 0.0.1 -> 0.0.2-<label>.<build>\n
-      The value must be one of: \n
-      withBuildNumber: Pre-release with `build numbers`
-      withoutBuildNumber: Pre-release without `build numbers`'
-    required: false
-    default: '0'
-  prelabel: # 
-    description: 'Label to be applied for the pre-release'
-    required: false
-  initial_version:
-    description: 'If there is no current version, the bump will be based on initial_version or 0.1.0'
-    required: false
+  pat_token:
+    description: 'The Personal Access token used to call the API \nThis action required org admin previleges'
+    required: true
+  issue_body_json:
+    description: 'The JSON from the parsed issue body'
+    required: true  
 outputs:
-  release: # output will be available to future steps
-    description: 'The release that was created'
+  status: # output will be available to future steps
+    description: 'The Status of a particular request'
 runs:
   using: 'node12'
   main: 'dist/index.js'
