@@ -1,61 +1,28 @@
-# Semver action
+# Themis action
 
-This is a **GitHub Action** for creating releases using [**Semantic versioning**](https://semver.org).
+This is a **GitHub Action** for mediating org admin requests and applying policies for goverance to these requests.
 
-It automatically increments the version number from the latest release using the [bumping semantics shown below](#how-it-works).
-
-This action modelled after [Concourse Semver resource](https://github.com/concourse/semver-resource) which is used in [Concourse pipelines](https://concourse-ci.org/).
-
-## Table of Contents
-
-- [Semver action](#semver-action)
-  - [Table of Contents](#table-of-contents)
-  - [How it works](#how-it-works)
-  - [How to use](#how-to-use)
-    - [Example connecting GitHub Action Workflow](#example-connecting-github-action-workflow)
-  - [Limitations](#limitations)
-  - [How to contribute](#how-to-contribute)
-    - [License](#license)
 
 ## How it works
 
-The action takes the following inputs:
+The action takes the following **inputs**:
 
-- **bump**: Create the next release after bumping the version number semantically.
+- **issue_body_json**: Issue body from an Issue Forms based issue.
   
-  **required**: false  
+- **pat_token**: A personal access token with elevated permissions for doing Org admin activities
 
-  The value must be one of:
-  - *major*: Create a release after bumping the major version. e.g. 1.0.0 -> 2.0.0.
-  - *minor*: Create a release after bumping the minor version. e.g. 0.1.0 -> 0.2.0.
-  - *patch*: Create a release after bumping the patch version. e.g. 0.1.0 -> 0.1.2.
-  - *final*: Promote a pre-release release to a final version, e.g. 1.0.0-rc.1 -> 1.0.0.
-  
-- **prerelease**: Denotes a pre-release. When this option is given the **prelabel** value value will be added by appending a hyphen and a `dot` separated **build number** immediately following the patch version. When bumping to a **prerelease**, if the previous version is already a **prerelease**, it would bump the **build number**.  
-If it is a new **prerelease** the **build number** would default at `1`. If the version is a **prerelease** of another type, (e.g. **prelabel** is `alpha` vs. `beta`), the type is switched and the **prerelease** **build number** is reset to 1. If the version is not already a **prerelease**, then **bump** is required because it is assumed that the current release is a **final release**.
-  
-  **required**: false  
+The action has the following **output**:
 
-  The value must be one of:
-  - *withBuildNumber*: Create a pre-release release with a `dot` separated **build number** immediately following **prelable** e.g. With `minor` bumping  e.g. 1.0.0 -> 1.1.0-alpha.1
-  - *withOutBuildNumber*: Create a pre-release release without the **build number**. e.g. 1.0.0 -> 1.1.0-alpha
-
-- **prelabel**: Label to be used for **prerelease** tags. The value can be any string. Good examples are `alpha`, `beta`, `rc`, etc.
-  
-  ​**required**: false  
-  **default**: 'alpha'
-
-- **initial_version**: If there is no current version, the bump will be based on initial_version or 0.1.0
-  
-  **required**: false  
-  **default**: 0.1.0
+- **status**: The status of handling a particular request
 
 ## How to use
 
 To use this **GitHub** Action you will need to complete the following:
 
-1. Add the task in your workflow where you see fit. You can use the example below as a reference.
-1. Modify the example to pass the correct values for `bump`. Values for `prelabel`, `initial_version` are optional.
+1. You can use the example workflow below as a reference.
+1. Have a step before calling this action to parse the `issue` body into a JSON. A good implementation is [Issue Forms Body Parser](https://github.com/peter-murray/issue-forms-body-parser)
+2. Add the step in your workflow where you see fit to call this action. 
+3. After the step, handle for failures or success scenarios. An example would be to update the `issue` with the status.
 
 ### Example connecting GitHub Action Workflow
 
@@ -67,38 +34,84 @@ This file should look like the following:
 
 ```yml
 ---
-name: "sample-workflow"
-on:
-  pull_request:
-  push:
-    branches:
-      - main
-      - 'releases/*'
+name: Sample Workflow
 
+on:
+  issues:
+    types: [opened, reopened, labeled]    
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: Test Action
+    if: contains(github.event.issue.labels.*.name, 'issueops')
+
+    runs-on: ubuntu-20.04
+    
     steps:
-    - uses: actions/checkout@v2
-    - uses: actionsdesk/semver
+    - id: parse
+      name: Run Issue form parser
+      uses: peter-murray/issue-forms-body-parser@v2.0.0
       with:
-        bump: patch
-        prerelease: withBuildNumber
-        prelabel: rc
-        initial_version: '1.0.1'
+        issue_id: ${{ github.event.issue.number }}
+        separator: '###'
+        label_marker_start: '>>'
+        label_marker_end: '<<' 
+
+    - name: Show parsed data JSON
+      run: |
+        echo "${{ steps.parse.outputs.payload }}"
+
+    - name: Process the Request using Themis
+      id: themis
+      uses: decyjphr-actions/themis@HEAD
+      with:
+        issue_body_json: '${{ steps.parse.outputs.payload }}'
+        pat_token: ${{secrets.pat_token}}
+        
+    - name: Process Failure
+      if: ${{ failure() }}
+      uses: actions/github-script@v5
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          try { 
+            await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: ':x: Sorry, your request could not be processed\n${{steps.themis.outputs.status}}'
+            }) 
+          } catch(err) {
+            throw err
+          }
+
+    - name: Process Success
+      uses: actions/github-script@v5
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          try { 
+            await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: ':white_check_mark: Congrats, your request has been processed\n${{steps.themis.outputs.status}}' 
+            }) 
+          } catch(err) {
+            throw err
+          }
+
 ```
 
 ## Limitations
 
-- When creating a pre-release it does not use the `pre-release` setting in GitHub. This would be fixed later.
-- `withoutBuildNumber` is not implemented yet.
+Requires a token with elevated permissions
 
 ## How to contribute
 
-If you would like to help contribute to this **GitHub** Action, please see [CONTRIBUTING](https://github.com/actionsdesk/semver/blob/master/.github/CONTRIBUTING.md)
+If you would like to help contribute to this **GitHub** Action, please see [CONTRIBUTING](https://github.com/decyjphr-actions/themis/blob/master/.github/CONTRIBUTING.md)
 
 ---
 
 ### License
 
-- [MIT License](https://github.com/actionsdesk/workflow-dispatch/blob/master/LICENSE)
+- [MIT License](https://github.com/decyjphr-actions/themis/blob/master/LICENSE)
