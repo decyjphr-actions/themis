@@ -1,8 +1,5 @@
-//import {Bumps, PreRelease} from './constants'
 import * as core from '@actions/core'
-//import * as github from '@actions/github'
 import {GitHub} from '@actions/github/lib/utils'
-//import { HttpClient } from '@actions/http-client'
 import {TeamData} from './TeamData'
 
 //type OctoClientType = ReturnType<typeof github.getOctokit>
