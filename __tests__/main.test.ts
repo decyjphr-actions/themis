@@ -51,22 +51,27 @@ test('Unit test Team.sync', async () => {
     teamInputs.teams
   )
   await team.sync()
+})
 
-  //const octokit = github.getOctokit(teamInputs.pat_token)
-  /*
-  const np = process.execPath
-  const ip = path.join(__dirname, '..', 'lib', 'main.js')
-
+test('Unit test Team.sync with error', async () => {
+  process.env['INPUT_ISSUE_BODY_JSON'] =
+    '{"members":"__yjayaraman\\r\\n__regpaco","teams":"__core\\r\\n__docs"}'
+  const teamInputs: TeamInputs = inputHelper.getInputs()
+  const token = core.getInput('pat_token', {required: true})
+  const octokit = github.getOctokit(token)
+  const team: Team = new Team(
+    octokit,
+    github.context.repo.owner,
+    teamInputs.members,
+    teamInputs.teams
+  )
   try {
-    const options: cp.ExecFileSyncOptions = {
-      env: process.env
-    }
-    console.error(cp.execFileSync(np, [ip], options))
-  } catch (err) {
-    console.log(err)
-    //expect(err).toBeInstanceOf(Error)
+    await team.sync()
+  } catch (e) {
+    expect(e).toBeInstanceOf(Error)
+    core.error(`Main exited ${e}`)
+    core.setFailed(`${e.message}`)
   }
-  */
 })
 /*
 test('Input Helper test prerelease', () => {

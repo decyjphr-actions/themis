@@ -67,10 +67,10 @@ const constants_1 = __webpack_require__(105);
  * Helper to get all the inputs for the action
  */
 function getInputs() {
-    const issue_body = core.getInput(constants_1.Inputs.IssueBody);
+    const issue_body = core.getInput(constants_1.Inputs.IssueBody, { required: true });
     core.debug(issue_body);
     const parsed_body = JSON.parse(issue_body);
-    const pat_token = core.getInput(constants_1.Inputs.Token);
+    const pat_token = core.getInput(constants_1.Inputs.Token, { required: true });
     const inputs = {
         members: parsed_body.members.split('\r\n'),
         teams: parsed_body.teams.split('\r\n'),
@@ -147,11 +147,11 @@ function run() {
             const octokit = github.getOctokit(teamInputs.pat_token);
             const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams);
             core.debug(`Team is ${team}`);
-            team.sync();
+            yield team.sync();
         }
-        catch (error) {
-            core.error(`${JSON.stringify(error)}`);
-            core.setFailed(`${error.message}`);
+        catch (e) {
+            core.error(`Main exited ${e}`);
+            core.setFailed(`${e.message}`);
         }
     });
 }
@@ -223,10 +223,14 @@ class Team {
                 res = yield this.octokitClient.teams.getByName(params);
             }
             catch (e) {
-                core.debug(`xxxx ${e} ${JSON.stringify(params)}`);
                 if (e.status === 404) {
-                    core.debug(`xxxx ${e} ${JSON.stringify(params)} ${JSON.stringify(res)}`);
+                    const message404 = `No team found for ${JSON.stringify(params)}`;
+                    core.debug(message404);
+                    throw new Error(message404);
                 }
+                const message = `${e} fetching the team with ${JSON.stringify(params)}`;
+                core.debug(message);
+                throw new Error(message);
             }
             const { data: team } = res;
             return team;
@@ -240,18 +244,14 @@ class Team {
                     team_slug,
                     username
                 };
-                core.debug(`Adding team members  ${JSON.stringify(params)}`);
-                let res = {
-                    data: {}
-                };
+                core.debug(`Adding team members ${JSON.stringify(params)}`);
                 try {
-                    res = yield this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(params);
+                    yield this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(params);
                 }
                 catch (e) {
-                    core.debug(`xxxx ${e}`);
-                    if (e.status === 404) {
-                        core.debug(`xxxx ${e} ${JSON.stringify(params)} ${JSON.stringify(res)}`);
-                    }
+                    const message = `${e} when adding members to the team with ${JSON.stringify(params)}`;
+                    core.debug(message);
+                    throw new Error(message);
                 }
             }
         });

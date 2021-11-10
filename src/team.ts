@@ -40,10 +40,14 @@ export class Team {
     try {
       res = await this.octokitClient.teams.getByName(params)
     } catch (e) {
-      core.debug(`xxxx ${e} ${JSON.stringify(params)}`)
       if (e.status === 404) {
-        core.debug(`xxxx ${e} ${JSON.stringify(params)} ${JSON.stringify(res)}`)
+        const message404 = `No team found for ${JSON.stringify(params)}`
+        core.debug(message404)
+        throw new Error(message404)
       }
+      const message = `${e} fetching the team with ${JSON.stringify(params)}`
+      core.debug(message)
+      throw new Error(message)
     }
     const {data: team} = res
     return team
@@ -60,22 +64,16 @@ export class Team {
         team_slug,
         username
       }
-      core.debug(`Adding team members  ${JSON.stringify(params)}`)
+      core.debug(`Adding team members ${JSON.stringify(params)}`)
 
-      let res = {
-        data: {}
-      }
       try {
-        res = await this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(
-          params
-        )
+        await this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(params)
       } catch (e) {
-        core.debug(`xxxx ${e}`)
-        if (e.status === 404) {
-          core.debug(
-            `xxxx ${e} ${JSON.stringify(params)} ${JSON.stringify(res)}`
-          )
-        }
+        const message = `${e} when adding members to the team with ${JSON.stringify(
+          params
+        )}`
+        core.debug(message)
+        throw new Error(message)
       }
     }
   }

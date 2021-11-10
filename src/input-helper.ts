@@ -6,10 +6,10 @@ import {TeamInputs} from './TeamInputs'
  * Helper to get all the inputs for the action
  */
 export function getInputs(): TeamInputs {
-  const issue_body: string = core.getInput(Inputs.IssueBody)
+  const issue_body: string = core.getInput(Inputs.IssueBody, {required: true})
   core.debug(issue_body)
   const parsed_body = JSON.parse(issue_body)
-  const pat_token: string = core.getInput(Inputs.Token)
+  const pat_token: string = core.getInput(Inputs.Token, {required: true})
 
   const inputs: TeamInputs = {
     members: parsed_body.members.split('\r\n'),
