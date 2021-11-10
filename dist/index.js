@@ -148,9 +148,11 @@ function run() {
             const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams);
             core.debug(`Team is ${team}`);
             yield team.sync();
+            core.setOutput('status', `Successfully created members ${JSON.stringify(teamInputs.members)} for teams ${JSON.stringify(teamInputs.members)}`);
         }
         catch (e) {
-            core.error(`Main exited ${e}`);
+            //core.error(`Main exited ${e}`)
+            core.setOutput('status', e.message);
             core.setFailed(`${e.message}`);
         }
     });

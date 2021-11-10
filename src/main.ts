@@ -20,8 +20,15 @@ async function run(): Promise<void> {
     )
     core.debug(`Team is ${team}`)
     await team.sync()
+    core.setOutput(
+      'status',
+      `Successfully created members ${JSON.stringify(
+        teamInputs.members
+      )} for teams ${JSON.stringify(teamInputs.members)}`
+    )
   } catch (e) {
-    core.error(`Main exited ${e}`)
+    //core.error(`Main exited ${e}`)
+    core.setOutput('status', e.message)
     core.setFailed(`${e.message}`)
   }
 }
