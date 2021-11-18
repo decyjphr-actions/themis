@@ -14,7 +14,7 @@ beforeAll(() => {
   process.env['INPUT_ISSUE_BODY_JSON'] =
     '{"members":"yjayaraman\\r\\nregpaco","teams":"core\\r\\ndocs"}'
   process.env['GITHUB_REPOSITORY'] = 'decyjphr-org/admin'
-  process.env['INPUT_REQUESTOR'] = 'decyjphr'
+  process.env['GITHUB_ACTOR'] = 'decyjphr'
 })
 
 beforeEach(() => {
@@ -57,7 +57,7 @@ test('Unit test Team.sync', async () => {
 })
 
 test('Unit test requestor not member for Team.sync', async () => {
-  process.env['INPUT_REQUESTOR'] = 'devasena'
+  process.env['GITHUB_ACTOR'] = 'devasena'
   const teamInputs: TeamInputs = inputHelper.getInputs()
   const token = core.getInput('pat_token', {required: true})
   const octokit = github.getOctokit(token)
