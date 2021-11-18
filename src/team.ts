@@ -8,17 +8,20 @@ export class Team {
   org: string
   teamSlugs: string[]
   members: string[]
+  requestor: string
 
   constructor(
     octokitClient: InstanceType<typeof GitHub>,
     org: string,
     members: string[],
-    teamSlugs: string[]
+    teamSlugs: string[],
+    requestor: string
   ) {
     this.octokitClient = octokitClient
     this.org = org
     this.teamSlugs = teamSlugs
     this.members = members
+    this.requestor = requestor
   }
 
   private async find(org: string, team_slug: string): Promise<TeamData | null> {
@@ -75,11 +78,71 @@ export class Team {
     }
   }
 
+  private async isOrgAdmin(org: string, username: string): Promise<boolean> {
+    try {
+      const {
+        data: {role: role}
+      } = await this.octokitClient.orgs.getMembershipForUser({
+        org,
+        username
+      })
+      return false && role === 'admin'
+    } catch (e) {
+      if (e.status === 404) {
+        core.debug(`${username} not a member of org ${e}`)
+        return false
+      } else {
+        core.error(
+          `Got error getting org role for ${username} in ${org} = ${e}`
+        )
+        return false
+      }
+    }
+  }
+
+  private async isTeamMember(
+    org: string,
+    team_slug: string,
+    username: string
+  ): Promise<boolean> {
+    const team = await this.find(this.org, team_slug)
+    core.debug(`found team ${team}`)
+    try {
+      const {
+        data: memberData
+      } = await this.octokitClient.teams.getMembershipForUserInOrg({
+        org,
+        team_slug,
+        username
+      })
+      core.debug(`Found member data = ${JSON.stringify(memberData)}`)
+      return true
+    } catch (e) {
+      if (e.status === 404) {
+        core.debug(`No team memberships found for ${username} ${e}`)
+        return false
+      } else {
+        core.error(
+          `Got error getting teams memberships team ${team_slug} in ${org} = ${e.message}`
+        )
+        return false
+      }
+    }
+  }
+
   async sync(): Promise<void> {
+    const isOrgAdmin = await this.isOrgAdmin(this.org, this.requestor)
     for (const teamSlug of this.teamSlugs) {
-      const team = await this.find(this.org, teamSlug)
-      core.debug(`${JSON.stringify(team)}`)
-      await this.addMembers(this.org, teamSlug, this.members)
+      if (
+        isOrgAdmin ||
+        (await this.isTeamMember(this.org, teamSlug, this.requestor))
+      ) {
+        await this.addMembers(this.org, teamSlug, this.members)
+      } else {
+        const message = `Not authorized!. The requestor ${this.requestor} is neither an admin for ${this.org} org nor a member of ${teamSlug} team `
+        core.debug(message)
+        throw new Error(message)
+      }
     }
   }
 }

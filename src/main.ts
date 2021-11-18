@@ -16,7 +16,8 @@ async function run(): Promise<void> {
       octokit,
       github.context.repo.owner,
       teamInputs.members,
-      teamInputs.teams
+      teamInputs.teams,
+      teamInputs.requestor
     )
     core.debug(`Team is ${team}`)
     await team.sync()
@@ -24,7 +25,7 @@ async function run(): Promise<void> {
       'status',
       `Successfully created members ${JSON.stringify(
         teamInputs.members
-      )} for teams ${JSON.stringify(teamInputs.members)}`
+      )} for teams ${JSON.stringify(teamInputs.teams)}`
     )
   } catch (e) {
     //core.error(`Main exited ${e}`)

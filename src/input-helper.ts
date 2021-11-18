@@ -9,11 +9,13 @@ export function getInputs(): TeamInputs {
   const issue_body: string = core.getInput(Inputs.IssueBody, {required: true})
   core.debug(issue_body)
   const parsed_body = JSON.parse(issue_body)
+  const requestor: string = core.getInput(Inputs.Requestor, {required: true})
   const pat_token: string = core.getInput(Inputs.Token, {required: true})
 
   const inputs: TeamInputs = {
     members: parsed_body.members.split('\r\n'),
     teams: parsed_body.teams.split('\r\n'),
+    requestor,
     pat_token
   }
 

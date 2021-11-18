@@ -13,6 +13,7 @@ var Inputs;
 (function (Inputs) {
     Inputs["IssueBody"] = "issue_body_json";
     Inputs["Token"] = "pat_token";
+    Inputs["Requestor"] = "Requestor";
 })(Inputs = exports.Inputs || (exports.Inputs = {}));
 var Outputs;
 (function (Outputs) {
@@ -70,10 +71,12 @@ function getInputs() {
     const issue_body = core.getInput(constants_1.Inputs.IssueBody, { required: true });
     core.debug(issue_body);
     const parsed_body = JSON.parse(issue_body);
+    const requestor = core.getInput(constants_1.Inputs.Requestor, { required: true });
     const pat_token = core.getInput(constants_1.Inputs.Token, { required: true });
     const inputs = {
         members: parsed_body.members.split('\r\n'),
         teams: parsed_body.teams.split('\r\n'),
+        requestor,
         pat_token
     };
     /**
@@ -145,10 +148,10 @@ function run() {
             core.debug(`Teams ${teamInputs.teams}`);
             //const token = core.getInput('github_token', {required: true})
             const octokit = github.getOctokit(teamInputs.pat_token);
-            const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams);
+            const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams, teamInputs.requestor);
             core.debug(`Team is ${team}`);
             yield team.sync();
-            core.setOutput('status', `Successfully created members ${JSON.stringify(teamInputs.members)} for teams ${JSON.stringify(teamInputs.members)}`);
+            core.setOutput('status', `Successfully created members ${JSON.stringify(teamInputs.members)} for teams ${JSON.stringify(teamInputs.teams)}`);
         }
         catch (e) {
             //core.error(`Main exited ${e}`)
@@ -197,15 +200,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Team = void 0;
-//import {Bumps, PreRelease} from './constants'
 const core = __importStar(__webpack_require__(186));
 //type OctoClientType = ReturnType<typeof github.getOctokit>
 class Team {
-    constructor(octokitClient, org, members, teamSlugs) {
+    constructor(octokitClient, org, members, teamSlugs, requestor) {
         this.octokitClient = octokitClient;
         this.org = org;
         this.teamSlugs = teamSlugs;
         this.members = members;
+        this.requestor = requestor;
     }
     find(org, team_slug) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -258,12 +261,65 @@ class Team {
             }
         });
     }
+    isOrgAdmin(org, username) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const { data: { role: role } } = yield this.octokitClient.orgs.getMembershipForUser({
+                    org,
+                    username
+                });
+                return  false && 0;
+            }
+            catch (e) {
+                if (e.status === 404) {
+                    core.debug(`${username} not a member of org ${e}`);
+                    return false;
+                }
+                else {
+                    core.error(`Got error getting org role for ${username} in ${org} = ${e}`);
+                    return false;
+                }
+            }
+        });
+    }
+    isTeamMember(org, team_slug, username) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const team = yield this.find(this.org, team_slug);
+            core.debug(`found team ${team}`);
+            try {
+                const { data: memberData } = yield this.octokitClient.teams.getMembershipForUserInOrg({
+                    org,
+                    team_slug,
+                    username
+                });
+                core.debug(`Found member data = ${JSON.stringify(memberData)}`);
+                return true;
+            }
+            catch (e) {
+                if (e.status === 404) {
+                    core.debug(`No team memberships found for ${username} ${e}`);
+                    return false;
+                }
+                else {
+                    core.error(`Got error getting teams memberships team ${team_slug} in ${org} = ${e.message}`);
+                    return false;
+                }
+            }
+        });
+    }
     sync() {
         return __awaiter(this, void 0, void 0, function* () {
+            const isOrgAdmin = yield this.isOrgAdmin(this.org, this.requestor);
             for (const teamSlug of this.teamSlugs) {
-                const team = yield this.find(this.org, teamSlug);
-                core.debug(`${JSON.stringify(team)}`);
-                yield this.addMembers(this.org, teamSlug, this.members);
+                if (isOrgAdmin ||
+                    (yield this.isTeamMember(this.org, teamSlug, this.requestor))) {
+                    yield this.addMembers(this.org, teamSlug, this.members);
+                }
+                else {
+                    const message = `Not authorized!. The requestor ${this.requestor} is neither an admin for ${this.org} org nor a member of ${teamSlug} team `;
+                    core.debug(message);
+                    throw new Error(message);
+                }
             }
         });
     }

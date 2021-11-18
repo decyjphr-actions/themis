@@ -1,6 +1,7 @@
 export enum Inputs {
   IssueBody = 'issue_body_json',
-  Token = 'pat_token'
+  Token = 'pat_token',
+  Requestor = 'Requestor'
 }
 export enum Outputs {
   Release = 'release'

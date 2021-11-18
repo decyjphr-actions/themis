@@ -14,6 +14,7 @@ beforeAll(() => {
   process.env['INPUT_ISSUE_BODY_JSON'] =
     '{"members":"yjayaraman\\r\\nregpaco","teams":"core\\r\\ndocs"}'
   process.env['GITHUB_REPOSITORY'] = 'decyjphr-org/admin'
+  process.env['INPUT_REQUESTOR'] = 'decyjphr'
 })
 
 beforeEach(() => {
@@ -37,6 +38,7 @@ test('Input Helper test', () => {
   const teamInputs = inputHelper.getInputs()
   expect(teamInputs.members).toContain('yjayaraman')
   expect(teamInputs.teams).toContain('core')
+  expect(teamInputs.requestor).toBe('decyjphr')
   expect(teamInputs.pat_token).toBeDefined()
 })
 
@@ -48,12 +50,35 @@ test('Unit test Team.sync', async () => {
     octokit,
     github.context.repo.owner,
     teamInputs.members,
-    teamInputs.teams
+    teamInputs.teams,
+    teamInputs.requestor
   )
   await team.sync()
 })
 
+test('Unit test requestor not member for Team.sync', async () => {
+  process.env['INPUT_REQUESTOR'] = 'devasena'
+  const teamInputs: TeamInputs = inputHelper.getInputs()
+  const token = core.getInput('pat_token', {required: true})
+  const octokit = github.getOctokit(token)
+  const team: Team = new Team(
+    octokit,
+    github.context.repo.owner,
+    teamInputs.members,
+    teamInputs.teams,
+    teamInputs.requestor
+  )
+  try {
+    await team.sync()
+  } catch (e) {
+    expect(e).toBeInstanceOf(Error)
+    core.error(`Main exited ${e}`)
+    core.setFailed(`${e.message}`)
+  }
+})
+
 test('Unit test Team.sync with error', async () => {
+  jest.setTimeout(10000)
   process.env['INPUT_ISSUE_BODY_JSON'] =
     '{"members":"__yjayaraman\\r\\n__regpaco","teams":"__core\\r\\n__docs"}'
   const teamInputs: TeamInputs = inputHelper.getInputs()
@@ -63,7 +88,8 @@ test('Unit test Team.sync with error', async () => {
     octokit,
     github.context.repo.owner,
     teamInputs.members,
-    teamInputs.teams
+    teamInputs.teams,
+    teamInputs.requestor
   )
   try {
     await team.sync()
