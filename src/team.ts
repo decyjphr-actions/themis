@@ -86,7 +86,7 @@ export class Team {
         org,
         username
       })
-      return false && role === 'admin'
+      return role === 'admin'
     } catch (e) {
       if (e.status === 404) {
         core.debug(`${username} not a member of org ${e}`)

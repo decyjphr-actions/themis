@@ -271,7 +271,7 @@ class Team {
                     org,
                     username
                 });
-                return  false && 0;
+                return role === 'admin';
             }
             catch (e) {
                 if (e.status === 404) {
