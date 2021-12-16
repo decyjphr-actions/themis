@@ -53,17 +53,33 @@ test('Unit test Team.sync', async () => {
     | TeamInputs
     | CollaboratorInputs
     | undefined = inputHelper.getInputs()
-  const teamInputs: TeamInputs = inputs as TeamInputs
-  const token = core.getInput('pat_token', {required: true})
-  const octokit = github.getOctokit(token)
-  const team: Team = new Team(
-    octokit,
-    github.context.repo.owner,
-    teamInputs.members,
-    teamInputs.teams,
-    teamInputs.requestor
-  )
-  await team.sync()
+
+  core.debug(`Inputs ${JSON.stringify(inputs)}`)
+  core.debug(`Inputs is TeamInputs ${inputs instanceof TeamInputs}`)
+  if (inputs instanceof TeamInputs) {
+    const teamInputs: TeamInputs = inputs
+    core.debug(`Members ${teamInputs.members}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+    core.debug(`Teams ${teamInputs.teams}`)
+    //const token = core.getInput('github_token', {required: true})
+    const octokit = github.getOctokit(teamInputs.pat_token)
+    const team: Team = new Team(
+      octokit,
+      github.context.repo.owner,
+      teamInputs.members,
+      teamInputs.teams,
+      teamInputs.requestor
+    )
+    core.debug(`Team is ${team}`)
+    await team.sync()
+    core.setOutput(
+      'status',
+      `Successfully created members ${JSON.stringify(
+        teamInputs.members
+      )} for teams ${JSON.stringify(teamInputs.teams)}`
+    )
+  } else {
+    throw new Error('Input not a team input')
+  }
 })
 
 test('Unit test requestor not member for Team.sync', async () => {

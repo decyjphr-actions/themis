@@ -11,6 +11,8 @@ async function run(): Promise<void> {
       | CollaboratorInputs
       | undefined = inputHelper.getInputs()
 
+    core.debug(`Inputs ${JSON.stringify(inputs)}`)
+    core.debug(`Inputs is TEamInputs ${inputs instanceof TeamInputs}`)
     if (inputs instanceof TeamInputs) {
       const teamInputs: TeamInputs = inputs
       core.debug(`Members ${teamInputs.members}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true

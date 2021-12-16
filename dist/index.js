@@ -65,6 +65,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getInputs = void 0;
 const core = __importStar(__webpack_require__(186));
 const constants_1 = __webpack_require__(105);
+const TeamInputs_1 = __webpack_require__(574);
 /**
  * Helper to get all the inputs for the action
  */
@@ -80,12 +81,13 @@ function getInputs() {
     }
     const pat_token = core.getInput(constants_1.Inputs.Token, { required: true });
     if (issue_name === 'teaminputs') {
-        const inputs = {
+        let inputs = new TeamInputs_1.TeamInputs();
+        inputs = Object.assign(inputs, {
             members: parsed_body.members.split('\r\n'),
             teams: parsed_body.teams.split('\r\n'),
             requestor: actor,
             pat_token
-        };
+        });
         return inputs;
     }
     else if (issue_name === 'collaboratorinputs') {
@@ -147,6 +149,8 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const inputs = inputHelper.getInputs();
+            core.debug(`Inputs ${JSON.stringify(inputs)}`);
+            core.debug(`Inputs is TEamInputs ${inputs instanceof TeamInputs_1.TeamInputs}`);
             if (inputs instanceof TeamInputs_1.TeamInputs) {
                 const teamInputs = inputs;
                 core.debug(`Members ${teamInputs.members}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
