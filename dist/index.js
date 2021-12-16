@@ -2,36 +2,37 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 574:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CollaboratorInputs = exports.TeamInputs = void 0;
+class TeamInputs {
+}
+exports.TeamInputs = TeamInputs;
+class CollaboratorInputs {
+}
+exports.CollaboratorInputs = CollaboratorInputs;
+
+
+/***/ }),
+
 /***/ 105:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Bumps = exports.PreRelease = exports.Outputs = exports.Inputs = void 0;
+exports.Inputs = void 0;
 var Inputs;
 (function (Inputs) {
     Inputs["IssueBody"] = "issue_body_json";
     Inputs["Token"] = "pat_token";
     Inputs["Requestor"] = "Requestor";
+    Inputs["IssueName"] = "issue_name";
 })(Inputs = exports.Inputs || (exports.Inputs = {}));
-var Outputs;
-(function (Outputs) {
-    Outputs["Release"] = "release";
-})(Outputs = exports.Outputs || (exports.Outputs = {}));
-var PreRelease;
-(function (PreRelease) {
-    PreRelease["withBuildNumber"] = "withBuildNumber";
-    PreRelease["withoutBuildNumber"] = "withOutBuildNumber";
-})(PreRelease = exports.PreRelease || (exports.PreRelease = {}));
-var Bumps;
-(function (Bumps) {
-    Bumps["major"] = "major";
-    Bumps["minor"] = "minor";
-    Bumps["patch"] = "patch";
-    Bumps["pre"] = "pre";
-    Bumps["final"] = "final";
-})(Bumps = exports.Bumps || (exports.Bumps = {}));
 
 
 /***/ }),
@@ -68,6 +69,8 @@ const constants_1 = __webpack_require__(105);
  * Helper to get all the inputs for the action
  */
 function getInputs() {
+    const issue_name = core.getInput(constants_1.Inputs.IssueName, { required: true });
+    core.debug(issue_name);
     const issue_body = core.getInput(constants_1.Inputs.IssueBody, { required: true });
     core.debug(issue_body);
     const parsed_body = JSON.parse(issue_body);
@@ -76,29 +79,25 @@ function getInputs() {
         throw new Error('actor is undefined');
     }
     const pat_token = core.getInput(constants_1.Inputs.Token, { required: true });
-    const inputs = {
-        members: parsed_body.members.split('\r\n'),
-        teams: parsed_body.teams.split('\r\n'),
-        requestor: actor,
-        pat_token
-    };
-    /**
-       if (bump == null) {
-      core.setFailed(
-        `Testing ${
-          Inputs.Prelabel
-        } input. Provided: ${pre}. Available options: ${Object.keys(Bumps)}`
-      )
+    if (issue_name === 'teaminputs') {
+        const inputs = {
+            members: parsed_body.members.split('\r\n'),
+            teams: parsed_body.teams.split('\r\n'),
+            requestor: actor,
+            pat_token
+        };
+        return inputs;
     }
-     * const retentionDaysStr = core.getInput(Inputs.RetentionDays)
-      if (retentionDaysStr) {
-         inputs.retentionDays = parseInt(retentionDaysStr)
-      if (isNaN(inputs.retentionDays)) {
-        core.setFailed('Invalid retention-days')
-      }
+    else if (issue_name === 'collaboratorinputs') {
+        const inputs = {
+            members: parsed_body.members.split('\r\n'),
+            teams: parsed_body.teams.split('\r\n'),
+            requestor: actor,
+            pat_token
+        };
+        return inputs;
     }
-   */
-    return inputs;
+    //return null
 }
 exports.getInputs = getInputs;
 
@@ -143,18 +142,22 @@ const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
 const inputHelper = __importStar(__webpack_require__(480));
 const team_1 = __webpack_require__(563);
+const TeamInputs_1 = __webpack_require__(574);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const teamInputs = inputHelper.getInputs();
-            core.debug(`Members ${teamInputs.members}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-            core.debug(`Teams ${teamInputs.teams}`);
-            //const token = core.getInput('github_token', {required: true})
-            const octokit = github.getOctokit(teamInputs.pat_token);
-            const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams, teamInputs.requestor);
-            core.debug(`Team is ${team}`);
-            yield team.sync();
-            core.setOutput('status', `Successfully created members ${JSON.stringify(teamInputs.members)} for teams ${JSON.stringify(teamInputs.teams)}`);
+            const inputs = inputHelper.getInputs();
+            if (inputs instanceof TeamInputs_1.TeamInputs) {
+                const teamInputs = inputs;
+                core.debug(`Members ${teamInputs.members}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+                core.debug(`Teams ${teamInputs.teams}`);
+                //const token = core.getInput('github_token', {required: true})
+                const octokit = github.getOctokit(teamInputs.pat_token);
+                const team = new team_1.Team(octokit, github.context.repo.owner, teamInputs.members, teamInputs.teams, teamInputs.requestor);
+                core.debug(`Team is ${team}`);
+                yield team.sync();
+                core.setOutput('status', `Successfully created members ${JSON.stringify(teamInputs.members)} for teams ${JSON.stringify(teamInputs.teams)}`);
+            }
         }
         catch (e) {
             //core.error(`Main exited ${e}`)

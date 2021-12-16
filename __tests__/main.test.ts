@@ -6,7 +6,8 @@ import {type} from 'os'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {Team} from '../src/team'
-import {TeamInputs} from '../src/TeamInputs'
+import {TeamInputs, CollaboratorInputs} from '../src/TeamInputs'
+
 import * as inputHelper from '../src/input-helper'
 
 beforeAll(() => {
@@ -15,6 +16,7 @@ beforeAll(() => {
     '{"members":"yjayaraman\\r\\nregpaco","teams":"core\\r\\ndocs"}'
   process.env['GITHUB_REPOSITORY'] = 'decyjphr-org/admin'
   process.env['GITHUB_ACTOR'] = 'decyjphr'
+  process.env['INPUT_ISSUE_NAME'] = 'teaminputs'
 })
 
 beforeEach(() => {
@@ -35,7 +37,11 @@ test('wait 500 ms', async () => {
 })
 
 test('Input Helper test', () => {
-  const teamInputs = inputHelper.getInputs()
+  const inputs:
+    | TeamInputs
+    | CollaboratorInputs
+    | undefined = inputHelper.getInputs()
+  const teamInputs: TeamInputs = inputs as TeamInputs
   expect(teamInputs.members).toContain('yjayaraman')
   expect(teamInputs.teams).toContain('core')
   expect(teamInputs.requestor).toBe('decyjphr')
@@ -43,7 +49,11 @@ test('Input Helper test', () => {
 })
 
 test('Unit test Team.sync', async () => {
-  const teamInputs: TeamInputs = inputHelper.getInputs()
+  const inputs:
+    | TeamInputs
+    | CollaboratorInputs
+    | undefined = inputHelper.getInputs()
+  const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})
   const octokit = github.getOctokit(token)
   const team: Team = new Team(
@@ -58,7 +68,11 @@ test('Unit test Team.sync', async () => {
 
 test('Unit test requestor not member for Team.sync', async () => {
   process.env['GITHUB_ACTOR'] = 'devasena'
-  const teamInputs: TeamInputs = inputHelper.getInputs()
+  const inputs:
+    | TeamInputs
+    | CollaboratorInputs
+    | undefined = inputHelper.getInputs()
+  const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})
   const octokit = github.getOctokit(token)
   const team: Team = new Team(
@@ -81,7 +95,11 @@ test('Unit test Team.sync with error', async () => {
   jest.setTimeout(10000)
   process.env['INPUT_ISSUE_BODY_JSON'] =
     '{"members":"__yjayaraman\\r\\n__regpaco","teams":"__core\\r\\n__docs"}'
-  const teamInputs: TeamInputs = inputHelper.getInputs()
+  const inputs:
+    | TeamInputs
+    | CollaboratorInputs
+    | undefined = inputHelper.getInputs()
+  const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})
   const octokit = github.getOctokit(token)
   const team: Team = new Team(

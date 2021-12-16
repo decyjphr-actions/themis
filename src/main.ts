@@ -2,31 +2,37 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import * as inputHelper from './input-helper'
 import {Team} from './team'
-import {TeamInputs} from './TeamInputs'
+import {TeamInputs, CollaboratorInputs} from './TeamInputs'
 
 async function run(): Promise<void> {
   try {
-    const teamInputs: TeamInputs = inputHelper.getInputs()
-    core.debug(`Members ${teamInputs.members}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-    core.debug(`Teams ${teamInputs.teams}`)
-    //const token = core.getInput('github_token', {required: true})
-    const octokit = github.getOctokit(teamInputs.pat_token)
+    const inputs:
+      | TeamInputs
+      | CollaboratorInputs
+      | undefined = inputHelper.getInputs()
 
-    const team: Team = new Team(
-      octokit,
-      github.context.repo.owner,
-      teamInputs.members,
-      teamInputs.teams,
-      teamInputs.requestor
-    )
-    core.debug(`Team is ${team}`)
-    await team.sync()
-    core.setOutput(
-      'status',
-      `Successfully created members ${JSON.stringify(
-        teamInputs.members
-      )} for teams ${JSON.stringify(teamInputs.teams)}`
-    )
+    if (inputs instanceof TeamInputs) {
+      const teamInputs: TeamInputs = inputs
+      core.debug(`Members ${teamInputs.members}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+      core.debug(`Teams ${teamInputs.teams}`)
+      //const token = core.getInput('github_token', {required: true})
+      const octokit = github.getOctokit(teamInputs.pat_token)
+      const team: Team = new Team(
+        octokit,
+        github.context.repo.owner,
+        teamInputs.members,
+        teamInputs.teams,
+        teamInputs.requestor
+      )
+      core.debug(`Team is ${team}`)
+      await team.sync()
+      core.setOutput(
+        'status',
+        `Successfully created members ${JSON.stringify(
+          teamInputs.members
+        )} for teams ${JSON.stringify(teamInputs.teams)}`
+      )
+    }
   } catch (e) {
     //core.error(`Main exited ${e}`)
     core.setOutput('status', e.message)
