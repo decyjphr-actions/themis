@@ -13,7 +13,7 @@ import * as inputHelper from '../src/input-helper'
 beforeAll(() => {
   //process.env['INPUT_PAT_TOKEN'] = 'abc'
   process.env['INPUT_ISSUE_BODY_JSON'] =
-    '{"members":"yjayaraman\\r\\nregpaco","teams":"core\\r\\ndocs"}'
+    '{"members":"yjayaraman\\r\\nregpaco","teams":"core\\r\\ndocs", "issue_name":"teaminputs"}'
   process.env['GITHUB_REPOSITORY'] = 'decyjphr-org/admin'
   process.env['GITHUB_ACTOR'] = 'decyjphr'
   process.env['INPUT_ISSUE_NAME'] = 'teaminputs'
@@ -94,7 +94,7 @@ test('Unit test requestor not member for Team.sync', async () => {
 test('Unit test Team.sync with error', async () => {
   jest.setTimeout(10000)
   process.env['INPUT_ISSUE_BODY_JSON'] =
-    '{"members":"__yjayaraman\\r\\n__regpaco","teams":"__core\\r\\n__docs"}'
+    '{"members":"__yjayaraman\\r\\n__regpaco","teams":"__core\\r\\n__docs", "issue_name":"teaminputs"}'
   const inputs:
     | TeamInputs
     | CollaboratorInputs

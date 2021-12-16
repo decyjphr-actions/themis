@@ -18,12 +18,13 @@ export function getInputs(): TeamInputs | CollaboratorInputs | undefined {
   const pat_token: string = core.getInput(Inputs.Token, {required: true})
 
   if (issue_name === 'teaminputs') {
-    const inputs: TeamInputs = {
+    let inputs: TeamInputs = new TeamInputs()
+    inputs = Object.assign(inputs, {
       members: parsed_body.members.split('\r\n'),
       teams: parsed_body.teams.split('\r\n'),
       requestor: actor,
       pat_token
-    }
+    })
     return inputs
   } else if (issue_name === 'collaboratorinputs') {
     const inputs: CollaboratorInputs = {
