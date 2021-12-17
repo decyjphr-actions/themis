@@ -18,21 +18,21 @@ export function getInputs(): TeamInputs | CollaboratorInputs | undefined {
   const pat_token: string = core.getInput(Inputs.Token, {required: true})
 
   if (issue_name === 'teaminputs') {
-    let inputs: TeamInputs = new TeamInputs()
-    inputs = Object.assign(inputs, {
-      members: parsed_body.members.split('\r\n'),
-      teams: parsed_body.teams.split('\r\n'),
-      requestor: actor,
+    const inputs: TeamInputs = new TeamInputs(
+      parsed_body.members.split('\r\n'),
+      parsed_body.teams.split('\r\n'),
+      actor,
       pat_token
-    })
+    )
     return inputs
   } else if (issue_name === 'collaboratorinputs') {
-    const inputs: CollaboratorInputs = {
-      members: parsed_body.members.split('\r\n'),
-      teams: parsed_body.teams.split('\r\n'),
-      requestor: actor,
+    const inputs: CollaboratorInputs = new CollaboratorInputs(
+      parsed_body.permission,
+      parsed_body.collaborators.split('\r\n'),
+      parsed_body.repos.split('\r\n'),
+      actor,
       pat_token
-    }
+    )
     return inputs
   }
   //return null

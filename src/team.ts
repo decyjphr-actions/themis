@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
-import {TeamData} from './TeamData'
+import {TeamData} from './InputData'
 
 //type OctoClientType = ReturnType<typeof github.getOctokit>
 export class Team {

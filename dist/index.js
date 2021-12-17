@@ -2,7 +2,7 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 574:
+/***/ 8574:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -10,103 +10,29 @@ require('./sourcemap-register.js');module.exports =
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CollaboratorInputs = exports.TeamInputs = void 0;
 class TeamInputs {
+    constructor(_members, _teams, _requestor, _pat_token) {
+        this.members = _members;
+        this.teams = _teams;
+        this.requestor = _requestor;
+        this.pat_token = _pat_token;
+    }
 }
 exports.TeamInputs = TeamInputs;
 class CollaboratorInputs {
+    constructor(_permission, _collaborators, _repos, _requestor, _pat_token) {
+        this.permission = _permission;
+        this.repos = _repos;
+        this.collaborators = _collaborators;
+        this.requestor = _requestor;
+        this.pat_token = _pat_token;
+    }
 }
 exports.CollaboratorInputs = CollaboratorInputs;
 
 
 /***/ }),
 
-/***/ 105:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Inputs = void 0;
-var Inputs;
-(function (Inputs) {
-    Inputs["IssueBody"] = "issue_body_json";
-    Inputs["Token"] = "pat_token";
-    Inputs["Requestor"] = "Requestor";
-    Inputs["IssueName"] = "issue_name";
-})(Inputs = exports.Inputs || (exports.Inputs = {}));
-
-
-/***/ }),
-
-/***/ 480:
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getInputs = void 0;
-const core = __importStar(__webpack_require__(186));
-const constants_1 = __webpack_require__(105);
-const TeamInputs_1 = __webpack_require__(574);
-/**
- * Helper to get all the inputs for the action
- */
-function getInputs() {
-    const issue_name = core.getInput(constants_1.Inputs.IssueName, { required: true });
-    core.debug(issue_name);
-    const issue_body = core.getInput(constants_1.Inputs.IssueBody, { required: true });
-    core.debug(issue_body);
-    const parsed_body = JSON.parse(issue_body);
-    const actor = process.env.GITHUB_ACTOR; //core.getInput(Inputs.Requestor, {required: true})
-    if (!actor) {
-        throw new Error('actor is undefined');
-    }
-    const pat_token = core.getInput(constants_1.Inputs.Token, { required: true });
-    if (issue_name === 'teaminputs') {
-        let inputs = new TeamInputs_1.TeamInputs();
-        inputs = Object.assign(inputs, {
-            members: parsed_body.members.split('\r\n'),
-            teams: parsed_body.teams.split('\r\n'),
-            requestor: actor,
-            pat_token
-        });
-        return inputs;
-    }
-    else if (issue_name === 'collaboratorinputs') {
-        const inputs = {
-            members: parsed_body.members.split('\r\n'),
-            teams: parsed_body.teams.split('\r\n'),
-            requestor: actor,
-            pat_token
-        };
-        return inputs;
-    }
-    //return null
-}
-exports.getInputs = getInputs;
-
-
-/***/ }),
-
-/***/ 109:
+/***/ 1925:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -140,17 +66,441 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__webpack_require__(186));
-const github = __importStar(__webpack_require__(438));
-const inputHelper = __importStar(__webpack_require__(480));
-const team_1 = __webpack_require__(563);
-const TeamInputs_1 = __webpack_require__(574);
+exports.Collaborator = void 0;
+const core = __importStar(__webpack_require__(2186));
+//import {OctokitResponse} from '@octokit/types'
+//type OctoClientType = ReturnType<typeof github.getOctokit>
+class Collaborator {
+    constructor(octokitClient, org, permission, collaborators, repos, requestor) {
+        this.octokitClient = octokitClient;
+        this.org = org;
+        this.permission = permission;
+        this.collaborators = collaborators;
+        this.repos = repos;
+        this.requestor = requestor;
+    }
+    find(owner, repo) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const existing = [];
+            let x = yield this.findDirect(owner, repo);
+            if (x) {
+                existing.push(...x);
+            }
+            x = yield this.findOutside(owner, repo);
+            if (x) {
+                existing.push(...x);
+            }
+            x = yield this.listInvitations(owner, repo);
+            if (x) {
+                existing.push(...x);
+            }
+            return existing;
+        });
+    }
+    findDirect(owner, repo) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('Finding collaborators');
+            core.debug(`${owner}`);
+            core.debug(`${repo}`);
+            const existing = [];
+            const params = {
+                repo,
+                owner,
+                affiliation: 'direct'
+            };
+            let res;
+            try {
+                res = yield this.octokitClient.repos.listCollaborators({
+                    repo,
+                    owner,
+                    affiliation: 'direct'
+                });
+            }
+            catch (e) {
+                if (e.status === 404) {
+                    const message404 = `No collaborator found for ${JSON.stringify(params)}`;
+                    core.debug(message404);
+                    //throw new Error(message404)
+                }
+                const message = `${e} fetching the collaborators with ${JSON.stringify(params)}`;
+                core.debug(message);
+                throw new Error(message);
+            }
+            const x = res.data.map(user => {
+                return {
+                    // Force all usernames to lowercase to avoid comparison issues.
+                    username: user.login.toLowerCase(),
+                    pendinginvite: false,
+                    permission: user.permissions
+                };
+            });
+            existing.push(...x);
+            return existing;
+        });
+    }
+    findOutside(owner, repo) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('Finding collaborators');
+            core.debug(`${owner}`);
+            core.debug(`${repo}`);
+            const existing = [];
+            const params = {
+                repo,
+                owner,
+                affiliation: 'direct'
+            };
+            let res;
+            try {
+                res = yield this.octokitClient.repos.listCollaborators({
+                    repo,
+                    owner,
+                    affiliation: 'outside'
+                });
+            }
+            catch (e) {
+                if (e.status === 404) {
+                    const message404 = `No collaborator found for ${JSON.stringify(params)}`;
+                    core.debug(message404);
+                    //throw new Error(message404)
+                }
+                const message = `${e} fetching the collaborators with ${JSON.stringify(params)}`;
+                core.debug(message);
+                throw new Error(message);
+            }
+            const x = res.data.map(user => {
+                return {
+                    // Force all usernames to lowercase to avoid comparison issues.
+                    username: user.login.toLowerCase(),
+                    pendinginvite: false,
+                    permission: user.permissions
+                };
+            });
+            existing.push(...x);
+            return existing;
+        });
+    }
+    listInvitations(owner, repo) {
+        return __awaiter(this, void 0, void 0, function* () {
+            core.debug('Finding collaborators');
+            core.debug(`${owner}`);
+            core.debug(`${repo}`);
+            const existing = [];
+            const params = {
+                repo,
+                owner,
+                affiliation: 'direct'
+            };
+            let res;
+            try {
+                res = yield this.octokitClient.repos.listInvitations({
+                    repo,
+                    owner
+                });
+            }
+            catch (e) {
+                if (e.status === 404) {
+                    const message404 = `No collaborator found for ${JSON.stringify(params)}`;
+                    core.debug(message404);
+                    //throw new Error(message404)
+                }
+                const message = `${e} fetching the collaborators with ${JSON.stringify(params)}`;
+                core.debug(message);
+                throw new Error(message);
+            }
+            const x = res.data.map(invite => {
+                var _a;
+                const u = ((_a = invite === null || invite === void 0 ? void 0 : invite.invitee) === null || _a === void 0 ? void 0 : _a.login.toLowerCase()) || '';
+                return {
+                    // Force all usernames to lowercase to avoid comparison issues.
+                    username: u,
+                    pendinginvite: true,
+                    invitation_id: invite.id,
+                    permission: undefined
+                };
+            });
+            existing.push(...x);
+            return existing;
+        });
+    }
+    updateInvite(owner, repo, invitation_id, permissions) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = {
+                owner,
+                repo,
+                invitation_id,
+                permissions
+            };
+            yield this.octokitClient.repos.updateInvitation(data);
+        });
+    }
+    addCollaborator(owner, repo, username) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const p = (this.permission === 'admin' && 'admin') ||
+                (this.permission === 'write' && 'push') ||
+                (this.permission === 'read' && 'pull') ||
+                undefined;
+            const data = {
+                owner,
+                repo,
+                username,
+                p
+            };
+            yield this.octokitClient.repos.addCollaborator(data);
+        });
+    }
+    /*
+    private async addMembers(
+      org: string,
+      team_slug: string,
+      members: string[]
+    ): Promise<void> {
+      for (const username of members) {
+        const params = {
+          org,
+          team_slug,
+          username
+        }
+        core.debug(`Adding team members ${JSON.stringify(params)}`)
+  
+        try {
+          await this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(params)
+        } catch (e) {
+          const message = `${e} when adding members to the team with ${JSON.stringify(
+            params
+          )}`
+          core.debug(message)
+          throw new Error(message)
+        }
+      }
+    }
+  
+    private async isOrgAdmin(org: string, username: string): Promise<boolean> {
+      try {
+        const {
+          data: {role: role}
+        } = await this.octokitClient.orgs.getMembershipForUser({
+          org,
+          username
+        })
+        return role === 'admin'
+      } catch (e) {
+        if (e.status === 404) {
+          core.debug(`${username} not a member of org ${e}`)
+          return false
+        } else {
+          core.error(
+            `Got error getting org role for ${username} in ${org} = ${e}`
+          )
+          return false
+        }
+      }
+    }
+  
+    private async isCollaborator(
+      org: string,
+      repo: string,
+      username: string
+    ): Promise<boolean> {
+      const collaborators = await this.find(this.org, repo)
+      core.debug(`collaborators team ${collaborators}`)
+      try {
+        const {
+          data: memberData
+        } = await this.octokitClient.teams.getMembershipForUserInOrg({
+          org,
+          team_slug,
+          username
+        })
+        core.debug(`Found member data = ${JSON.stringify(memberData)}`)
+        return true
+      } catch (e) {
+        if (e.status === 404) {
+          core.debug(`No team memberships found for ${username} ${e}`)
+          return false
+        } else {
+          core.error(
+            `Got error getting teams memberships team ${team_slug} in ${org} = ${e.message}`
+          )
+          return false
+        }
+      }
+    }
+  */
+    sync() {
+        return __awaiter(this, void 0, void 0, function* () {
+            //const isOrgAdmin = await this.isOrgAdmin(this.org, this.requestor)
+            for (const repo of this.repos) {
+                const existings = yield this.find(this.org, repo);
+                core.debug(`Existing collaborators are ${JSON.stringify(existings)}`);
+                if (existings) {
+                    for (const existing of existings) {
+                        const found = this.collaborators.find(record => {
+                            return existing.username === record;
+                        });
+                        if (found) {
+                            if (existing.pendinginvite) {
+                                // re-invite
+                                core.debug(`***** Will re-invite a pending invitation for the ${existing.username} with permission ${this.permission}`);
+                                this.updateInvite(this.org, repo, existing.invitation_id, this.permission);
+                            }
+                            else {
+                                core.debug(`***** Will modify the existing collaborator ${existing.username} with permission ${this.permission}`);
+                                this.addCollaborator(this.org, repo, existing.username);
+                            }
+                        }
+                    }
+                }
+                for (const collaborator of this.collaborators) {
+                    const found = existings === null || existings === void 0 ? void 0 : existings.find(record => {
+                        return record.username === collaborator;
+                    });
+                    if (!found) {
+                        this.addCollaborator(this.org, repo, collaborator);
+                    }
+                }
+                /*
+                if (
+                  isOrgAdmin ||
+                  (await this.isCollaborator(this.org, repo, this.requestor))
+                ) {
+                  await this.addMembers(this.org, teamSlug, this.members)
+                } else {
+                  const message = `Not authorized!. The requestor ${this.requestor} is neither an admin for ${this.org} org nor a member of ${teamSlug} team `
+                  core.debug(message)
+                  throw new Error(message)
+                }
+                */
+            }
+        });
+    }
+}
+exports.Collaborator = Collaborator;
+
+
+/***/ }),
+
+/***/ 5105:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Inputs = void 0;
+var Inputs;
+(function (Inputs) {
+    Inputs["IssueBody"] = "issue_body_json";
+    Inputs["Token"] = "pat_token";
+    Inputs["Requestor"] = "Requestor";
+    Inputs["IssueName"] = "issue_name";
+})(Inputs = exports.Inputs || (exports.Inputs = {}));
+
+
+/***/ }),
+
+/***/ 5480:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getInputs = void 0;
+const core = __importStar(__webpack_require__(2186));
+const constants_1 = __webpack_require__(5105);
+const TeamInputs_1 = __webpack_require__(8574);
+/**
+ * Helper to get all the inputs for the action
+ */
+function getInputs() {
+    const issue_name = core.getInput(constants_1.Inputs.IssueName, { required: true });
+    core.debug(issue_name);
+    const issue_body = core.getInput(constants_1.Inputs.IssueBody, { required: true });
+    core.debug(issue_body);
+    const parsed_body = JSON.parse(issue_body);
+    const actor = process.env.GITHUB_ACTOR; //core.getInput(Inputs.Requestor, {required: true})
+    if (!actor) {
+        throw new Error('actor is undefined');
+    }
+    const pat_token = core.getInput(constants_1.Inputs.Token, { required: true });
+    if (issue_name === 'teaminputs') {
+        const inputs = new TeamInputs_1.TeamInputs(parsed_body.members.split('\r\n'), parsed_body.teams.split('\r\n'), actor, pat_token);
+        return inputs;
+    }
+    else if (issue_name === 'collaboratorinputs') {
+        const inputs = new TeamInputs_1.CollaboratorInputs(parsed_body.permission, parsed_body.collaborators.split('\r\n'), parsed_body.repos.split('\r\n'), actor, pat_token);
+        return inputs;
+    }
+    //return null
+}
+exports.getInputs = getInputs;
+
+
+/***/ }),
+
+/***/ 3109:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__webpack_require__(2186));
+const github = __importStar(__webpack_require__(5438));
+const inputHelper = __importStar(__webpack_require__(5480));
+const team_1 = __webpack_require__(8563);
+const collaborator_1 = __webpack_require__(1925);
+const TeamInputs_1 = __webpack_require__(8574);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const inputs = inputHelper.getInputs();
             core.debug(`Inputs ${JSON.stringify(inputs)}`);
-            core.debug(`Inputs is TEamInputs ${inputs instanceof TeamInputs_1.TeamInputs}`);
+            core.debug(`Inputs instanceof TeamInputs is ${inputs instanceof TeamInputs_1.TeamInputs}`);
             if (inputs instanceof TeamInputs_1.TeamInputs) {
                 const teamInputs = inputs;
                 core.debug(`Members ${teamInputs.members}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
@@ -161,6 +511,18 @@ function run() {
                 core.debug(`Team is ${team}`);
                 yield team.sync();
                 core.setOutput('status', `Successfully created members ${JSON.stringify(teamInputs.members)} for teams ${JSON.stringify(teamInputs.teams)}`);
+            }
+            else if (inputs instanceof TeamInputs_1.CollaboratorInputs) {
+                const collaboratorInputs = inputs;
+                core.debug(`permission ${collaboratorInputs.permission}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+                core.debug(`collaborators ${collaboratorInputs.collaborators}`);
+                core.debug(`repos ${collaboratorInputs.repos}`);
+                //const token = core.getInput('github_token', {required: true})
+                const octokit = github.getOctokit(collaboratorInputs.pat_token);
+                const collaborator = new collaborator_1.Collaborator(octokit, github.context.repo.owner, collaboratorInputs.permission, collaboratorInputs.collaborators, collaboratorInputs.repos, collaboratorInputs.requestor);
+                core.debug(`Collaborator is ${collaborator}`);
+                yield collaborator.sync();
+                core.setOutput('status', `Successfully added Collaborators ${JSON.stringify(collaboratorInputs.collaborators)} for repos ${JSON.stringify(collaboratorInputs.repos)} with permissions ${collaboratorInputs.permission}`);
             }
         }
         catch (e) {
@@ -175,7 +537,7 @@ run();
 
 /***/ }),
 
-/***/ 563:
+/***/ 8563:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -210,7 +572,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Team = void 0;
-const core = __importStar(__webpack_require__(186));
+const core = __importStar(__webpack_require__(2186));
 //type OctoClientType = ReturnType<typeof github.getOctokit>
 class Team {
     constructor(octokitClient, org, members, teamSlugs, requestor) {
@@ -339,7 +701,7 @@ exports.Team = Team;
 
 /***/ }),
 
-/***/ 351:
+/***/ 7351:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -352,8 +714,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const os = __importStar(__webpack_require__(87));
-const utils_1 = __webpack_require__(278);
+const os = __importStar(__webpack_require__(2087));
+const utils_1 = __webpack_require__(5278);
 /**
  * Commands
  *
@@ -425,7 +787,7 @@ function escapeProperty(s) {
 
 /***/ }),
 
-/***/ 186:
+/***/ 2186:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -447,11 +809,11 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const command_1 = __webpack_require__(351);
+const command_1 = __webpack_require__(7351);
 const file_command_1 = __webpack_require__(717);
-const utils_1 = __webpack_require__(278);
-const os = __importStar(__webpack_require__(87));
-const path = __importStar(__webpack_require__(622));
+const utils_1 = __webpack_require__(5278);
+const os = __importStar(__webpack_require__(2087));
+const path = __importStar(__webpack_require__(5622));
 /**
  * The code to exit an action
  */
@@ -686,9 +1048,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const fs = __importStar(__webpack_require__(747));
-const os = __importStar(__webpack_require__(87));
-const utils_1 = __webpack_require__(278);
+const fs = __importStar(__webpack_require__(5747));
+const os = __importStar(__webpack_require__(2087));
+const utils_1 = __webpack_require__(5278);
 function issueCommand(command, message) {
     const filePath = process.env[`GITHUB_${command}`];
     if (!filePath) {
@@ -706,7 +1068,7 @@ exports.issueCommand = issueCommand;
 
 /***/ }),
 
-/***/ 278:
+/***/ 5278:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -732,15 +1094,15 @@ exports.toCommandValue = toCommandValue;
 
 /***/ }),
 
-/***/ 53:
+/***/ 4087:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Context = void 0;
-const fs_1 = __webpack_require__(747);
-const os_1 = __webpack_require__(87);
+const fs_1 = __webpack_require__(5747);
+const os_1 = __webpack_require__(2087);
 class Context {
     /**
      * Hydrate the context from the environment
@@ -789,7 +1151,7 @@ exports.Context = Context;
 
 /***/ }),
 
-/***/ 438:
+/***/ 5438:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -815,8 +1177,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getOctokit = exports.context = void 0;
-const Context = __importStar(__webpack_require__(53));
-const utils_1 = __webpack_require__(30);
+const Context = __importStar(__webpack_require__(4087));
+const utils_1 = __webpack_require__(3030);
 exports.context = new Context.Context();
 /**
  * Returns a hydrated octokit ready to use for GitHub Actions
@@ -832,7 +1194,7 @@ exports.getOctokit = getOctokit;
 
 /***/ }),
 
-/***/ 914:
+/***/ 7914:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -858,7 +1220,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getApiBaseUrl = exports.getProxyAgent = exports.getAuthString = void 0;
-const httpClient = __importStar(__webpack_require__(925));
+const httpClient = __importStar(__webpack_require__(9925));
 function getAuthString(token, options) {
     if (!token && !options.auth) {
         throw new Error('Parameter token or opts.auth is required');
@@ -882,7 +1244,7 @@ exports.getApiBaseUrl = getApiBaseUrl;
 
 /***/ }),
 
-/***/ 30:
+/***/ 3030:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -908,12 +1270,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getOctokitOptions = exports.GitHub = exports.context = void 0;
-const Context = __importStar(__webpack_require__(53));
-const Utils = __importStar(__webpack_require__(914));
+const Context = __importStar(__webpack_require__(4087));
+const Utils = __importStar(__webpack_require__(7914));
 // octokit + plugins
-const core_1 = __webpack_require__(762);
-const plugin_rest_endpoint_methods_1 = __webpack_require__(44);
-const plugin_paginate_rest_1 = __webpack_require__(193);
+const core_1 = __webpack_require__(6762);
+const plugin_rest_endpoint_methods_1 = __webpack_require__(3044);
+const plugin_paginate_rest_1 = __webpack_require__(4193);
 exports.context = new Context.Context();
 const baseUrl = Utils.getApiBaseUrl();
 const defaults = {
@@ -943,15 +1305,15 @@ exports.getOctokitOptions = getOctokitOptions;
 
 /***/ }),
 
-/***/ 925:
+/***/ 9925:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const http = __webpack_require__(605);
-const https = __webpack_require__(211);
-const pm = __webpack_require__(443);
+const http = __webpack_require__(8605);
+const https = __webpack_require__(7211);
+const pm = __webpack_require__(6443);
 let tunnel;
 var HttpCodes;
 (function (HttpCodes) {
@@ -1370,7 +1732,7 @@ class HttpClient {
         if (useProxy) {
             // If using proxy, need tunnel
             if (!tunnel) {
-                tunnel = __webpack_require__(294);
+                tunnel = __webpack_require__(4294);
             }
             const agentOptions = {
                 maxSockets: maxSockets,
@@ -1486,7 +1848,7 @@ exports.HttpClient = HttpClient;
 
 /***/ }),
 
-/***/ 443:
+/***/ 6443:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -1608,7 +1970,7 @@ exports.createTokenAuth = createTokenAuth;
 
 /***/ }),
 
-/***/ 762:
+/***/ 6762:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
@@ -1616,10 +1978,10 @@ exports.createTokenAuth = createTokenAuth;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-var universalUserAgent = __webpack_require__(429);
-var beforeAfterHook = __webpack_require__(682);
-var request = __webpack_require__(234);
-var graphql = __webpack_require__(668);
+var universalUserAgent = __webpack_require__(5030);
+var beforeAfterHook = __webpack_require__(3682);
+var request = __webpack_require__(6234);
+var graphql = __webpack_require__(8467);
 var authToken = __webpack_require__(334);
 
 function _objectWithoutPropertiesLoose(source, excluded) {
@@ -1790,7 +2152,7 @@ exports.Octokit = Octokit;
 
 /***/ }),
 
-/***/ 440:
+/***/ 9440:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
@@ -1799,7 +2161,7 @@ exports.Octokit = Octokit;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 var isPlainObject = __webpack_require__(558);
-var universalUserAgent = __webpack_require__(429);
+var universalUserAgent = __webpack_require__(5030);
 
 function lowercaseKeys(object) {
   if (!object) {
@@ -2234,7 +2596,7 @@ exports.isPlainObject = isPlainObject;
 
 /***/ }),
 
-/***/ 668:
+/***/ 8467:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
@@ -2242,8 +2604,8 @@ exports.isPlainObject = isPlainObject;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-var request = __webpack_require__(234);
-var universalUserAgent = __webpack_require__(429);
+var request = __webpack_require__(6234);
+var universalUserAgent = __webpack_require__(5030);
 
 const VERSION = "4.6.0";
 
@@ -2350,7 +2712,7 @@ exports.withCustomRequest = withCustomRequest;
 
 /***/ }),
 
-/***/ 193:
+/***/ 4193:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -2490,7 +2852,7 @@ exports.paginateRest = paginateRest;
 
 /***/ }),
 
-/***/ 44:
+/***/ 3044:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -3678,8 +4040,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var deprecation = __webpack_require__(932);
-var once = _interopDefault(__webpack_require__(223));
+var deprecation = __webpack_require__(8932);
+var once = _interopDefault(__webpack_require__(1223));
 
 const logOnce = once(deprecation => console.warn(deprecation));
 /**
@@ -3731,7 +4093,7 @@ exports.RequestError = RequestError;
 
 /***/ }),
 
-/***/ 234:
+/***/ 6234:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
@@ -3741,9 +4103,9 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var endpoint = __webpack_require__(440);
-var universalUserAgent = __webpack_require__(429);
-var isPlainObject = __webpack_require__(62);
+var endpoint = __webpack_require__(9440);
+var universalUserAgent = __webpack_require__(5030);
+var isPlainObject = __webpack_require__(9062);
 var nodeFetch = _interopDefault(__webpack_require__(467));
 var requestError = __webpack_require__(537);
 
@@ -3887,7 +4249,7 @@ exports.request = request;
 
 /***/ }),
 
-/***/ 62:
+/***/ 9062:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -3933,12 +4295,12 @@ exports.isPlainObject = isPlainObject;
 
 /***/ }),
 
-/***/ 682:
+/***/ 3682:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-var register = __webpack_require__(670)
-var addHook = __webpack_require__(549)
-var removeHook = __webpack_require__(819)
+var register = __webpack_require__(4670)
+var addHook = __webpack_require__(5549)
+var removeHook = __webpack_require__(6819)
 
 // bind with array of arguments: https://stackoverflow.com/a/21792913
 var bind = Function.bind
@@ -3997,7 +4359,7 @@ module.exports.Collection = Hook.Collection
 
 /***/ }),
 
-/***/ 549:
+/***/ 5549:
 /***/ ((module) => {
 
 module.exports = addHook;
@@ -4050,7 +4412,7 @@ function addHook(state, kind, name, hook) {
 
 /***/ }),
 
-/***/ 670:
+/***/ 4670:
 /***/ ((module) => {
 
 module.exports = register;
@@ -4084,7 +4446,7 @@ function register(state, name, method, options) {
 
 /***/ }),
 
-/***/ 819:
+/***/ 6819:
 /***/ ((module) => {
 
 module.exports = removeHook;
@@ -4110,7 +4472,7 @@ function removeHook(state, name, method) {
 
 /***/ }),
 
-/***/ 932:
+/***/ 8932:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -4148,11 +4510,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var Stream = _interopDefault(__webpack_require__(413));
-var http = _interopDefault(__webpack_require__(605));
-var Url = _interopDefault(__webpack_require__(835));
-var https = _interopDefault(__webpack_require__(211));
-var zlib = _interopDefault(__webpack_require__(761));
+var Stream = _interopDefault(__webpack_require__(2413));
+var http = _interopDefault(__webpack_require__(8605));
+var Url = _interopDefault(__webpack_require__(8835));
+var https = _interopDefault(__webpack_require__(7211));
+var zlib = _interopDefault(__webpack_require__(8761));
 
 // Based on https://github.com/tmpvar/jsdom/blob/aa85b2abf07766ff7bf5c1f6daafb3726f2f2db5/lib/jsdom/living/blob.js
 
@@ -4303,7 +4665,7 @@ FetchError.prototype.name = 'FetchError';
 
 let convert;
 try {
-	convert = __webpack_require__(877).convert;
+	convert = __webpack_require__(2877).convert;
 } catch (e) {}
 
 const INTERNALS = Symbol('Body internals');
@@ -5795,10 +6157,10 @@ exports.FetchError = FetchError;
 
 /***/ }),
 
-/***/ 223:
+/***/ 1223:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-var wrappy = __webpack_require__(940)
+var wrappy = __webpack_require__(2940)
 module.exports = wrappy(once)
 module.exports.strict = wrappy(onceStrict)
 
@@ -5844,27 +6206,27 @@ function onceStrict (fn) {
 
 /***/ }),
 
-/***/ 294:
+/***/ 4294:
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-module.exports = __webpack_require__(219);
+module.exports = __webpack_require__(4219);
 
 
 /***/ }),
 
-/***/ 219:
+/***/ 4219:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 
-var net = __webpack_require__(631);
-var tls = __webpack_require__(16);
-var http = __webpack_require__(605);
-var https = __webpack_require__(211);
-var events = __webpack_require__(614);
-var assert = __webpack_require__(357);
-var util = __webpack_require__(669);
+var net = __webpack_require__(1631);
+var tls = __webpack_require__(4016);
+var http = __webpack_require__(8605);
+var https = __webpack_require__(7211);
+var events = __webpack_require__(8614);
+var assert = __webpack_require__(2357);
+var util = __webpack_require__(1669);
 
 
 exports.httpOverHttp = httpOverHttp;
@@ -6124,7 +6486,7 @@ exports.debug = debug; // for test
 
 /***/ }),
 
-/***/ 429:
+/***/ 5030:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -6150,7 +6512,7 @@ exports.getUserAgent = getUserAgent;
 
 /***/ }),
 
-/***/ 940:
+/***/ 2940:
 /***/ ((module) => {
 
 // Returns a wrapper function that returns a wrapped callback
@@ -6190,7 +6552,7 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 877:
+/***/ 2877:
 /***/ ((module) => {
 
 module.exports = eval("require")("encoding");
@@ -6198,7 +6560,7 @@ module.exports = eval("require")("encoding");
 
 /***/ }),
 
-/***/ 357:
+/***/ 2357:
 /***/ ((module) => {
 
 "use strict";
@@ -6206,7 +6568,7 @@ module.exports = require("assert");;
 
 /***/ }),
 
-/***/ 614:
+/***/ 8614:
 /***/ ((module) => {
 
 "use strict";
@@ -6214,7 +6576,7 @@ module.exports = require("events");;
 
 /***/ }),
 
-/***/ 747:
+/***/ 5747:
 /***/ ((module) => {
 
 "use strict";
@@ -6222,7 +6584,7 @@ module.exports = require("fs");;
 
 /***/ }),
 
-/***/ 605:
+/***/ 8605:
 /***/ ((module) => {
 
 "use strict";
@@ -6230,7 +6592,7 @@ module.exports = require("http");;
 
 /***/ }),
 
-/***/ 211:
+/***/ 7211:
 /***/ ((module) => {
 
 "use strict";
@@ -6238,7 +6600,7 @@ module.exports = require("https");;
 
 /***/ }),
 
-/***/ 631:
+/***/ 1631:
 /***/ ((module) => {
 
 "use strict";
@@ -6246,7 +6608,7 @@ module.exports = require("net");;
 
 /***/ }),
 
-/***/ 87:
+/***/ 2087:
 /***/ ((module) => {
 
 "use strict";
@@ -6254,7 +6616,7 @@ module.exports = require("os");;
 
 /***/ }),
 
-/***/ 622:
+/***/ 5622:
 /***/ ((module) => {
 
 "use strict";
@@ -6262,7 +6624,7 @@ module.exports = require("path");;
 
 /***/ }),
 
-/***/ 413:
+/***/ 2413:
 /***/ ((module) => {
 
 "use strict";
@@ -6270,7 +6632,7 @@ module.exports = require("stream");;
 
 /***/ }),
 
-/***/ 16:
+/***/ 4016:
 /***/ ((module) => {
 
 "use strict";
@@ -6278,7 +6640,7 @@ module.exports = require("tls");;
 
 /***/ }),
 
-/***/ 835:
+/***/ 8835:
 /***/ ((module) => {
 
 "use strict";
@@ -6286,7 +6648,7 @@ module.exports = require("url");;
 
 /***/ }),
 
-/***/ 669:
+/***/ 1669:
 /***/ ((module) => {
 
 "use strict";
@@ -6294,7 +6656,7 @@ module.exports = require("util");;
 
 /***/ }),
 
-/***/ 761:
+/***/ 8761:
 /***/ ((module) => {
 
 "use strict";
@@ -6340,7 +6702,7 @@ module.exports = require("zlib");;
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(109);
+/******/ 	return __webpack_require__(3109);
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
