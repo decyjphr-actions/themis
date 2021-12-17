@@ -343,7 +343,7 @@ class Collaborator {
                     });
                     core.debug(`**** ${this.requestor} is a repoadmin is ${isRepoAdmin} `);
                     if (!isRepoAdmin) {
-                        const message = `Not authorized! The requestor @${this.requestor} is neither an admin for \`${this.org}\` org nor an admin for \`${repo}\` repo `;
+                        const message = `Not authorized! The requestor @${this.requestor} is neither an admin for **${this.org}** org nor an admin for **${repo}** repo `;
                         core.debug(message);
                         throw new Error(message);
                     }
@@ -692,7 +692,7 @@ class Team {
                     yield this.addMembers(this.org, teamSlug, this.members);
                 }
                 else {
-                    const message = `Not authorized! The requestor @${this.requestor} is neither an admin for \`${this.org}\` org nor a member of \`${teamSlug}\` team `;
+                    const message = `Not authorized! The requestor @${this.requestor} is neither an admin for **${this.org}** org nor a member of **${teamSlug}** team `;
                     core.debug(message);
                     throw new Error(message);
                 }
