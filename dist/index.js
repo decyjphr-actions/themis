@@ -343,7 +343,11 @@ class Collaborator {
                     });
                     core.debug(`**** ${this.requestor} is a repoadmin is ${isRepoAdmin} `);
                     if (!isRepoAdmin) {
-                        const message = `Not authorized! The requestor @${this.requestor} is neither an admin for **${this.org}** org nor an admin for **${repo}** repo `;
+                        const message = `Not authorized! 
+          
+          The requestor @${this.requestor} is neither an admin for **${this.org}** org nor an admin for **${repo}** repo 
+          
+          A person with the required permissions must approve this request to re-process it.`;
                         core.debug(message);
                         throw new Error(message);
                     }
