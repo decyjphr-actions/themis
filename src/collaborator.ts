@@ -106,7 +106,7 @@ export class Collaborator {
     const params = {
       repo,
       owner,
-      affiliation: 'direct'
+      affiliation: 'outside'
     }
     let res
     try {
@@ -179,7 +179,11 @@ export class Collaborator {
         username: u,
         pendinginvite: true,
         invitation_id: invite.id,
-        permission: undefined
+        permission: {
+          admin: invite.permissions === 'admin',
+          push: invite.permissions === 'write',
+          pull: invite.permissions === 'read'
+        }
       }
     })
     existing.push(...x)
@@ -245,7 +249,7 @@ export class Collaborator {
       }
     }
   }
-
+*/
   private async isOrgAdmin(org: string, username: string): Promise<boolean> {
     try {
       const {
@@ -267,7 +271,7 @@ export class Collaborator {
       }
     }
   }
-
+  /*
   private async isCollaborator(
     org: string,
     repo: string,
@@ -300,11 +304,23 @@ export class Collaborator {
 */
 
   async sync(): Promise<void> {
-    //const isOrgAdmin = await this.isOrgAdmin(this.org, this.requestor)
+    const isOrgAdmin = await this.isOrgAdmin(this.org, this.requestor)
 
     for (const repo of this.repos) {
       const existings = await this.find(this.org, repo)
       core.debug(`Existing collaborators are ${JSON.stringify(existings)}`)
+      if (!isOrgAdmin) {
+        const isRepoAdmin = existings?.find(record => {
+          return record.username === this.requestor && record.permission?.admin
+        })
+        core.debug(`**** ${this.requestor} is a repoadmin is ${isRepoAdmin} `)
+        if (!isRepoAdmin) {
+          const message = `Not authorized!. The requestor ${this.requestor} is neither an admin for ${this.org} org nor an admin for ${repo} repo `
+          core.debug(message)
+          throw new Error(message)
+        }
+      }
+
       if (existings) {
         for (const existing of existings) {
           const found = this.collaborators.find(record => {
@@ -340,18 +356,6 @@ export class Collaborator {
           this.addCollaborator(this.org, repo, collaborator)
         }
       }
-      /*
-      if (
-        isOrgAdmin ||
-        (await this.isCollaborator(this.org, repo, this.requestor))
-      ) {
-        await this.addMembers(this.org, teamSlug, this.members)
-      } else {
-        const message = `Not authorized!. The requestor ${this.requestor} is neither an admin for ${this.org} org nor a member of ${teamSlug} team `
-        core.debug(message)
-        throw new Error(message)
-      }
-      */
     }
   }
 }
