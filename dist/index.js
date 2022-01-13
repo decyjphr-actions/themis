@@ -247,37 +247,11 @@ class Collaborator {
                 owner,
                 repo,
                 username,
-                p
+                permission: p
             };
             yield this.octokitClient.repos.addCollaborator(data);
         });
     }
-    /*
-    private async addMembers(
-      org: string,
-      team_slug: string,
-      members: string[]
-    ): Promise<void> {
-      for (const username of members) {
-        const params = {
-          org,
-          team_slug,
-          username
-        }
-        core.debug(`Adding team members ${JSON.stringify(params)}`)
-  
-        try {
-          await this.octokitClient.teams.addOrUpdateMembershipForUserInOrg(params)
-        } catch (e) {
-          const message = `${e} when adding members to the team with ${JSON.stringify(
-            params
-          )}`
-          core.debug(message)
-          throw new Error(message)
-        }
-      }
-    }
-  */
     isOrgAdmin(org, username) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -299,37 +273,6 @@ class Collaborator {
             }
         });
     }
-    /*
-    private async isCollaborator(
-      org: string,
-      repo: string,
-      username: string
-    ): Promise<boolean> {
-      const collaborators = await this.find(this.org, repo)
-      core.debug(`collaborators team ${collaborators}`)
-      try {
-        const {
-          data: memberData
-        } = await this.octokitClient.teams.getMembershipForUserInOrg({
-          org,
-          team_slug,
-          username
-        })
-        core.debug(`Found member data = ${JSON.stringify(memberData)}`)
-        return true
-      } catch (e) {
-        if (e.status === 404) {
-          core.debug(`No team memberships found for ${username} ${e}`)
-          return false
-        } else {
-          core.error(
-            `Got error getting teams memberships team ${team_slug} in ${org} = ${e.message}`
-          )
-          return false
-        }
-      }
-    }
-  */
     sync() {
         return __awaiter(this, void 0, void 0, function* () {
             const isOrgAdmin = yield this.isOrgAdmin(this.org, this.requestor);
@@ -343,11 +286,12 @@ class Collaborator {
                     });
                     core.debug(`**** ${this.requestor} is a repoadmin is ${isRepoAdmin} `);
                     if (!isRepoAdmin) {
-                        const message = `Not authorized! 
+                        const message = `
+Not authorized! 
           
-          The requestor @${this.requestor} is neither an admin for **${this.org}** org nor an admin for **${repo}** repo 
+The requestor @${this.requestor} is neither an admin for **${this.org}** org nor an admin for **${repo}** repo 
           
-          A person with the required permissions must approve this request to re-process it.`;
+A person with the required permissions must approve this request to re-process it.`;
                         core.debug(message);
                         throw new Error(message);
                     }
