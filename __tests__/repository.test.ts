@@ -75,10 +75,7 @@ test('Unit test repository.transfer', async () => {
     const repository: Repository = new Repository(
       octokit,
       github.context.repo.owner,
-      inputs.action,
-      inputs.repo,
-      inputs.targetOrg,
-      inputs.requestor
+      inputs
     )
     await repository.sync()
     core.setOutput(
@@ -91,33 +88,3 @@ test('Unit test repository.transfer', async () => {
     throw new Error('Input not a Repository input')
   }
 })
-
-/*
-
-test('Unit test Team.sync with error', async () => {
-  jest.setTimeout(10000)
-  process.env['INPUT_ISSUE_BODY_JSON'] =
-    '{"collaborators":"yjayaraman\\r\\nregpaco","repos":"test\\r\\njquery", "issue_name":"permissioninputs"}'
-  const inputs:
-    | collaboratorInputs
-    | CollaboratorInputs
-    | undefined = inputHelper.getInputs()
-  const collaboratorInputs: collaboratorInputs = inputs as collaboratorInputs
-  const token = core.getInput('pat_token', {required: true})
-  const octokit = github.getOctokit(token)
-  const team: Team = new Team(
-    octokit,
-    github.context.repo.owner,
-    collaboratorInputs.members,
-    collaboratorInputs.teams,
-    collaboratorInputs.requestor
-  )
-  try {
-    await team.sync()
-  } catch (e) {
-    expect(e).toBeInstanceOf(Error)
-    core.error(`Main exited ${e}`)
-    core.setFailed(`${e.message}`)
-  }
-})
-*/

@@ -102,10 +102,7 @@ test('Unit test Collaborator.sync', async () => {
     const collaborator: Collaborator = new Collaborator(
       octokit,
       github.context.repo.owner,
-      collaboratorInputs.permission,
-      collaboratorInputs.collaborators,
-      collaboratorInputs.repos,
-      collaboratorInputs.requestor
+      collaboratorInputs
     )
     core.debug(`Collaborator is ${collaborator}`)
     await collaborator.sync()
@@ -143,10 +140,7 @@ test('Unit test requestor not admin for Collaborator.sync', async () => {
     const collaborator: Collaborator = new Collaborator(
       octokit,
       github.context.repo.owner,
-      collaboratorInputs.permission,
-      collaboratorInputs.collaborators,
-      collaboratorInputs.repos,
-      collaboratorInputs.requestor
+      collaboratorInputs
     )
     core.debug(`Collaborator is ${collaborator}`)
     try {

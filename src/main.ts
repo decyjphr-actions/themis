@@ -4,6 +4,7 @@ import * as inputHelper from './input-helper'
 import {Team} from './team'
 import {Collaborator} from './collaborator'
 import {TeamInputs, CollaboratorInputs, RepoInputs} from './ThemisInputs'
+import {Repository} from './repository'
 
 async function run(): Promise<void> {
   try {
@@ -13,60 +14,54 @@ async function run(): Promise<void> {
       | CollaboratorInputs
       | undefined = inputHelper.getInputs()
 
-    core.debug(`Inputs ${JSON.stringify(inputs)}`)
-    core.debug(
-      `Inputs instanceof TeamInputs is ${inputs instanceof TeamInputs}`
-    )
-    if (inputs instanceof TeamInputs) {
-      const teamInputs: TeamInputs = inputs
-      core.debug(`Members ${teamInputs.members}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-      core.debug(`Teams ${teamInputs.teams}`)
-      //const token = core.getInput('github_token', {required: true})
-      const octokit = github.getOctokit(teamInputs.pat_token)
-      const team: Team = new Team(
-        octokit,
-        github.context.repo.owner,
-        teamInputs.members,
-        teamInputs.teams,
-        teamInputs.requestor
-      )
-      core.debug(`Team is ${team}`)
-      await team.sync()
-      core.setOutput(
-        'status',
-        `Successfully created members ${JSON.stringify(
-          teamInputs.members
-        )} for teams ${JSON.stringify(teamInputs.teams)}`
-      )
-    } else if (inputs instanceof CollaboratorInputs) {
-      const collaboratorInputs: CollaboratorInputs = inputs
-      core.debug(`permission ${collaboratorInputs.permission}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
-      core.debug(`collaborators ${collaboratorInputs.collaborators}`)
-      core.debug(`repos ${collaboratorInputs.repos}`)
-      //const token = core.getInput('github_token', {required: true})
-      const octokit = github.getOctokit(collaboratorInputs.pat_token)
-      const collaborator: Collaborator = new Collaborator(
-        octokit,
-        github.context.repo.owner,
-        collaboratorInputs.permission,
-        collaboratorInputs.collaborators,
-        collaboratorInputs.repos,
-        collaboratorInputs.requestor
-      )
-      core.debug(`Collaborator is ${collaborator}`)
-      await collaborator.sync()
-      core.setOutput(
-        'status',
-        `Successfully added Collaborators ${JSON.stringify(
-          collaboratorInputs.collaborators
-        )} for repos ${JSON.stringify(
-          collaboratorInputs.repos
-        )} with permissions ${collaboratorInputs.permission}`
-      )
+    core.debug(`Inputs ${JSON.stringify(inputs)}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+
+    if (inputs !== undefined) {
+      const octokit = github.getOctokit(inputs.pat_token)
+
+      if (inputs instanceof TeamInputs) {
+        const team: Team = new Team(octokit, github.context.repo.owner, inputs)
+        await team.sync()
+        core.setOutput(
+          'status',
+          `Successfully created members ${JSON.stringify(
+            inputs.members
+          )} for teams ${JSON.stringify(inputs.teams)}`
+        )
+      } else if (inputs instanceof CollaboratorInputs) {
+        const collaborator: Collaborator = new Collaborator(
+          octokit,
+          github.context.repo.owner,
+          inputs
+        )
+        core.debug(`Collaborator is ${collaborator}`)
+        await collaborator.sync()
+        core.setOutput(
+          'status',
+          `Successfully added Collaborators ${JSON.stringify(
+            inputs.collaborators
+          )} for repos ${JSON.stringify(inputs.repos)} with permissions ${
+            inputs.permission
+          }`
+        )
+      } else if (inputs instanceof RepoInputs) {
+        const repository: Repository = new Repository(
+          octokit,
+          github.context.repo.owner,
+          inputs
+        )
+        core.debug(`Repository is ${repository}`)
+        await repository.sync()
+        core.setOutput(
+          'status',
+          `Successfully executed ${
+            inputs.action
+          } on Repository ${JSON.stringify(inputs.repo)}`
+        )
+      }
     }
   } catch (_e) {
     const e: Error = _e as Error
-    //core.error(`Main exited ${e}`)
     core.setOutput('status', e.message)
     core.setFailed(`${e.message}`)
   }

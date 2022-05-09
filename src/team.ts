@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
 import {TeamData} from './InputData'
+import {TeamInputs} from './ThemisInputs'
 
 //type OctoClientType = ReturnType<typeof github.getOctokit>
 export class Team {
@@ -13,15 +14,13 @@ export class Team {
   constructor(
     octokitClient: InstanceType<typeof GitHub>,
     org: string,
-    members: string[],
-    teamSlugs: string[],
-    requestor: string
+    inputs: TeamInputs
   ) {
     this.octokitClient = octokitClient
     this.org = org
-    this.teamSlugs = teamSlugs
-    this.members = members
-    this.requestor = requestor
+    this.teamSlugs = inputs.teams
+    this.members = inputs.members
+    this.requestor = inputs.requestor
   }
 
   private async find(org: string, team_slug: string): Promise<TeamData | null> {

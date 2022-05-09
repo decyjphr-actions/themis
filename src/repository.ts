@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
 import {RepositoryData} from './InputData'
-import {RepoAction} from './ThemisInputs'
+import {RepoAction, RepoInputs} from './ThemisInputs'
 //import {OctokitResponse} from '@octokit/types'
 
 //type OctoClientType = ReturnType<typeof github.getOctokit>
@@ -16,17 +16,14 @@ export class Repository {
   constructor(
     octokitClient: InstanceType<typeof GitHub>,
     org: string,
-    action: RepoAction | undefined,
-    repo: string,
-    targetOrg: string,
-    requestor: string
+    inputs: RepoInputs
   ) {
     this.octokitClient = octokitClient
     this.org = org
-    this.action = action
-    this.repo = repo
-    this.targetOrg = targetOrg
-    this.requestor = requestor
+    this.action = inputs.action
+    this.repo = inputs.repo
+    this.targetOrg = inputs.targetOrg
+    this.requestor = inputs.requestor
   }
   private async find(
     owner: string,

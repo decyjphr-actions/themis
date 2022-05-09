@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
 import {CollaboratorData} from './InputData'
+import {CollaboratorInputs} from './ThemisInputs'
 export class Collaborator {
   octokitClient: InstanceType<typeof GitHub>
   org: string
@@ -12,17 +13,14 @@ export class Collaborator {
   constructor(
     octokitClient: InstanceType<typeof GitHub>,
     org: string,
-    permission: 'admin' | 'read' | 'write' | 'maintain' | 'triage' | undefined,
-    collaborators: string[],
-    repos: string[],
-    requestor: string
+    inputs: CollaboratorInputs
   ) {
     this.octokitClient = octokitClient
     this.org = org
-    this.permission = permission
-    this.collaborators = collaborators
-    this.repos = repos
-    this.requestor = requestor
+    this.permission = inputs.permission
+    this.collaborators = inputs.collaborators
+    this.repos = inputs.repos
+    this.requestor = inputs.requestor
   }
   private async find(
     owner: string,

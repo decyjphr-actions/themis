@@ -85,13 +85,7 @@ test('Unit test Team.sync', async () => {
     core.debug(`Teams ${teamInputs.teams}`)
     //const token = core.getInput('github_token', {required: true})
     const octokit = github.getOctokit(teamInputs.pat_token)
-    const team: Team = new Team(
-      octokit,
-      github.context.repo.owner,
-      teamInputs.members,
-      teamInputs.teams,
-      teamInputs.requestor
-    )
+    const team: Team = new Team(octokit, github.context.repo.owner, teamInputs)
     core.debug(`Team is ${team}`)
     await team.sync()
     core.setOutput(
@@ -115,13 +109,7 @@ test('Unit test requestor not member for Team.sync', async () => {
   const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})
   const octokit = github.getOctokit(token)
-  const team: Team = new Team(
-    octokit,
-    github.context.repo.owner,
-    teamInputs.members,
-    teamInputs.teams,
-    teamInputs.requestor
-  )
+  const team: Team = new Team(octokit, github.context.repo.owner, teamInputs)
   try {
     await team.sync()
   } catch (e) {
@@ -143,13 +131,7 @@ test('Unit test Team.sync with error', async () => {
   const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})
   const octokit = github.getOctokit(token)
-  const team: Team = new Team(
-    octokit,
-    github.context.repo.owner,
-    teamInputs.members,
-    teamInputs.teams,
-    teamInputs.requestor
-  )
+  const team: Team = new Team(octokit, github.context.repo.owner, teamInputs)
   try {
     await team.sync()
   } catch (e) {
