@@ -6,9 +6,9 @@ import {type} from 'os'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {Team} from '../src/team'
-import {TeamInputs, CollaboratorInputs} from '../src/TeamInputs'
-
+import {TeamInputs, CollaboratorInputs, RepoInputs} from '../src/ThemisInputs'
 import * as inputHelper from '../src/input-helper'
+import nock = require('nock')
 
 beforeAll(() => {
   //process.env['INPUT_PAT_TOKEN'] = 'abc'
@@ -20,7 +20,35 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  //delete process.env['INPUT_BUMP']
+  nock.disableNetConnect()
+
+  const orgowners = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/organization.membership.json')
+    )
+  )
+  nock('https://api.github.com')
+    .get('/orgs/decyjphr-org/memberships/decyjphr')
+    .reply(200, orgowners)
+
+  const teamadd = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/team.add.json')
+    )
+  )
+  nock('https://api.github.com')
+    .put(/orgs\/decyjphr-org\/teams\/[a-z]*\/memberships/)
+    .reply(200, teamadd)
+
+  const teamget = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/team.get.json')
+    )
+  )
+  nock('https://api.github.com')
+    .get(/orgs\/decyjphr-org\/teams\/[a-z]*/)
+    .reply(200, teamget)
+  
 })
 
 test('throws invalid number', async () => {
@@ -39,6 +67,7 @@ test('wait 500 ms', async () => {
 test('Input Helper test', () => {
   const inputs:
     | TeamInputs
+    | RepoInputs
     | CollaboratorInputs
     | undefined = inputHelper.getInputs()
   const teamInputs: TeamInputs = inputs as TeamInputs
@@ -51,6 +80,7 @@ test('Input Helper test', () => {
 test('Unit test Team.sync', async () => {
   const inputs:
     | TeamInputs
+    | RepoInputs
     | CollaboratorInputs
     | undefined = inputHelper.getInputs()
 
@@ -87,6 +117,7 @@ test('Unit test requestor not member for Team.sync', async () => {
   const inputs:
     | TeamInputs
     | CollaboratorInputs
+    | RepoInputs
     | undefined = inputHelper.getInputs()
   const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})
@@ -114,6 +145,7 @@ test('Unit test Team.sync with error', async () => {
   const inputs:
     | TeamInputs
     | CollaboratorInputs
+    | RepoInputs
     | undefined = inputHelper.getInputs()
   const teamInputs: TeamInputs = inputs as TeamInputs
   const token = core.getInput('pat_token', {required: true})

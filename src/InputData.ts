@@ -19,3 +19,7 @@ export interface CollaboratorData {
   invitation_id?: number
   permission: {pull: boolean; push: boolean; admin: boolean} | undefined
 }
+
+export interface RepositoryData {
+  name: string
+}

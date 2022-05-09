@@ -6,27 +6,74 @@ import {type} from 'os'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {Collaborator} from '../src/collaborator'
-import {TeamInputs, CollaboratorInputs} from '../src/TeamInputs'
-
+import {TeamInputs, CollaboratorInputs, ThemisInputs, RepoInputs} from '../src/ThemisInputs'
 import * as inputHelper from '../src/input-helper'
+import nock = require('nock')
 
 beforeAll(() => {
   //process.env['INPUT_PAT_TOKEN'] = 'abc'
   process.env['INPUT_ISSUE_BODY_JSON'] =
-    '{"collaborators":"yjayaraman\\r\\nregpaco","repos":"test\\r\\nsecdemo","issue_name":"permissioninputs","permission":"write"}'
+    '{"collaborators":"yjayaraman\\r\\nregpaco","repos":"test","issue_name":"permissioninputs","permission":"write"}'
   process.env['GITHUB_REPOSITORY'] = 'decyjphr-org/admin'
   process.env['GITHUB_ACTOR'] = 'decyjphr'
   process.env['INPUT_ISSUE_NAME'] = 'collaboratorinputs'
 })
 
 beforeEach(() => {
-  //delete process.env['INPUT_BUMP']
+  nock.disableNetConnect()
+
+  const orgowners = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/organization.membership.json')
+    )
+  )
+  nock('https://api.github.com')
+    .get('/orgs/decyjphr-org/memberships/decyjphr')
+    .reply(200, orgowners)
+
+  const directcollaborators = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/collaborators.direct.json')
+    )
+  )
+  nock('https://api.github.com')
+    .get('/repos/decyjphr-org/test/collaborators?affiliation=direct')
+    .reply(200, directcollaborators)
+  
+  const outsidecollaborators = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/collaborators.direct.json')
+    )
+  )
+  nock('https://api.github.com')
+    .get('/repos/decyjphr-org/test/collaborators?affiliation=outside')
+    .reply(200, directcollaborators)
+
+  const invitations = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/collaborators.invitations.json')
+    )
+  )
+  nock('https://api.github.com')
+    .get('/repos/decyjphr-org/test/invitations')
+    .reply(200, invitations)
+
+  const addcollaborator = JSON.parse(
+    JSON.stringify(
+      require('./fixtures/response/collaborators.add.json')
+    )
+  )
+  nock('https://api.github.com')
+    .put(/repos\/decyjphr-org\/test\/collaborators/)
+    .reply(200, addcollaborator) 
+
 })
 
 test('Input Helper test', () => {
   const inputs:
     | TeamInputs
     | CollaboratorInputs
+    | RepoInputs
     | undefined = inputHelper.getInputs()
 
   core.debug(`Inputs ${JSON.stringify(inputs)}`)
@@ -44,6 +91,7 @@ test('Unit test Collaborator.sync', async () => {
   const inputs:
     | TeamInputs
     | CollaboratorInputs
+    | RepoInputs
     | undefined = inputHelper.getInputs()
 
   core.debug(`Inputs ${JSON.stringify(inputs)}`)
@@ -83,6 +131,7 @@ test('Unit test requestor not admin for Collaborator.sync', async () => {
   const inputs:
     | TeamInputs
     | CollaboratorInputs
+    | RepoInputs
     | undefined = inputHelper.getInputs()
 
   core.debug(`Inputs ${JSON.stringify(inputs)}`)
@@ -94,6 +143,7 @@ test('Unit test requestor not admin for Collaborator.sync', async () => {
     core.debug(`repos ${collaboratorInputs.repos}`)
     //const token = core.getInput('github_token', {required: true})
     const octokit = github.getOctokit(collaboratorInputs.pat_token)
+
     const collaborator: Collaborator = new Collaborator(
       octokit,
       github.context.repo.owner,

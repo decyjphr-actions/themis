@@ -3,12 +3,13 @@ import * as github from '@actions/github'
 import * as inputHelper from './input-helper'
 import {Team} from './team'
 import {Collaborator} from './collaborator'
-import {TeamInputs, CollaboratorInputs} from './TeamInputs'
+import {TeamInputs, CollaboratorInputs, RepoInputs} from './ThemisInputs'
 
 async function run(): Promise<void> {
   try {
     const inputs:
       | TeamInputs
+      | RepoInputs
       | CollaboratorInputs
       | undefined = inputHelper.getInputs()
 
@@ -63,7 +64,8 @@ async function run(): Promise<void> {
         )} with permissions ${collaboratorInputs.permission}`
       )
     }
-  } catch (e) {
+  } catch (_e) {
+    const e: Error = _e as Error
     //core.error(`Main exited ${e}`)
     core.setOutput('status', e.message)
     core.setFailed(`${e.message}`)

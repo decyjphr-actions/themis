@@ -1,9 +1,6 @@
 import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
 import {CollaboratorData} from './InputData'
-//import {OctokitResponse} from '@octokit/types'
-
-//type OctoClientType = ReturnType<typeof github.getOctokit>
 export class Collaborator {
   octokitClient: InstanceType<typeof GitHub>
   org: string

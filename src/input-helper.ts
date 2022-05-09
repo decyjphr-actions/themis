@@ -1,11 +1,19 @@
 import * as core from '@actions/core'
-import {Inputs} from './constants'
-import {CollaboratorInputs, TeamInputs} from './TeamInputs'
+import {
+  Inputs,
+  CollaboratorInputs,
+  TeamInputs,
+  RepoInputs
+} from './ThemisInputs'
 
 /**
  * Helper to get all the inputs for the action
  */
-export function getInputs(): TeamInputs | CollaboratorInputs | undefined {
+export function getInputs():
+  | TeamInputs
+  | CollaboratorInputs
+  | RepoInputs
+  | undefined {
   const issue_name: string = core.getInput(Inputs.IssueName, {required: true})
   core.debug(issue_name)
   const issue_body: string = core.getInput(Inputs.IssueBody, {required: true})
@@ -30,6 +38,15 @@ export function getInputs(): TeamInputs | CollaboratorInputs | undefined {
       parsed_body.permission,
       parsed_body.collaborators.split('\r\n'),
       parsed_body.repos.split('\r\n'),
+      actor,
+      pat_token
+    )
+    return inputs
+  } else if (issue_name === 'repoinputs') {
+    const inputs: RepoInputs = new RepoInputs(
+      parsed_body.action,
+      parsed_body.repo,
+      parsed_body.targetOrg,
       actor,
       pat_token
     )
