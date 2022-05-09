@@ -23,32 +23,25 @@ beforeEach(() => {
   nock.disableNetConnect()
 
   const orgowners = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/organization.membership.json')
-    )
+    JSON.stringify(require('./fixtures/response/organization.membership.json'))
   )
   nock('https://api.github.com')
     .get('/orgs/decyjphr-org/memberships/decyjphr')
     .reply(200, orgowners)
 
   const teamadd = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/team.add.json')
-    )
+    JSON.stringify(require('./fixtures/response/team.add.json'))
   )
   nock('https://api.github.com')
     .put(/orgs\/decyjphr-org\/teams\/[a-z]*\/memberships/)
     .reply(200, teamadd)
 
   const teamget = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/team.get.json')
-    )
+    JSON.stringify(require('./fixtures/response/team.get.json'))
   )
   nock('https://api.github.com')
     .get(/orgs\/decyjphr-org\/teams\/[a-z]*/)
     .reply(200, teamget)
-  
 })
 
 test('throws invalid number', async () => {

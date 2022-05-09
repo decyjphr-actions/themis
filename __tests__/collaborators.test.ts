@@ -6,7 +6,12 @@ import {type} from 'os'
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {Collaborator} from '../src/collaborator'
-import {TeamInputs, CollaboratorInputs, ThemisInputs, RepoInputs} from '../src/ThemisInputs'
+import {
+  TeamInputs,
+  CollaboratorInputs,
+  ThemisInputs,
+  RepoInputs
+} from '../src/ThemisInputs'
 import * as inputHelper from '../src/input-helper'
 import nock = require('nock')
 
@@ -23,27 +28,21 @@ beforeEach(() => {
   nock.disableNetConnect()
 
   const orgowners = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/organization.membership.json')
-    )
+    JSON.stringify(require('./fixtures/response/organization.membership.json'))
   )
   nock('https://api.github.com')
     .get('/orgs/decyjphr-org/memberships/decyjphr')
     .reply(200, orgowners)
 
   const directcollaborators = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/collaborators.direct.json')
-    )
+    JSON.stringify(require('./fixtures/response/collaborators.direct.json'))
   )
   nock('https://api.github.com')
     .get('/repos/decyjphr-org/test/collaborators?affiliation=direct')
     .reply(200, directcollaborators)
-  
+
   const outsidecollaborators = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/collaborators.direct.json')
-    )
+    JSON.stringify(require('./fixtures/response/collaborators.direct.json'))
   )
   nock('https://api.github.com')
     .get('/repos/decyjphr-org/test/collaborators?affiliation=outside')
@@ -59,14 +58,11 @@ beforeEach(() => {
     .reply(200, invitations)
 
   const addcollaborator = JSON.parse(
-    JSON.stringify(
-      require('./fixtures/response/collaborators.add.json')
-    )
+    JSON.stringify(require('./fixtures/response/collaborators.add.json'))
   )
   nock('https://api.github.com')
     .put(/repos\/decyjphr-org\/test\/collaborators/)
-    .reply(200, addcollaborator) 
-
+    .reply(200, addcollaborator)
 })
 
 test('Input Helper test', () => {

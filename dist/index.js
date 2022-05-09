@@ -89,8 +89,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Collaborator = void 0;
 const core = __importStar(__webpack_require__(186));
-//import {OctokitResponse} from '@octokit/types'
-//type OctoClientType = ReturnType<typeof github.getOctokit>
 class Collaborator {
     constructor(octokitClient, org, permission, collaborators, repos, requestor) {
         this.octokitClient = octokitClient;
