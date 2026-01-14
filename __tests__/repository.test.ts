@@ -109,7 +109,9 @@ test('Unit test repository.create', async () => {
     expect(inputs.pat_token).toBeDefined()
 
     const orgResponse = JSON.parse(
-      JSON.stringify(require('./fixtures/response/organization.membership.json'))
+      JSON.stringify(
+        require('./fixtures/response/organization.membership.json')
+      )
     )
     nock('https://api.github.com')
       .get('/orgs/decyjphr-org/memberships/decyjphr')
