@@ -48,7 +48,8 @@ export function getInputs():
       parsed_body.repo,
       parsed_body.targetOrg,
       actor,
-      pat_token
+      pat_token,
+      parsed_body.createOptions
     )
     return inputs
   }

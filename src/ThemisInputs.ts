@@ -12,7 +12,8 @@ export enum Inputs {
 }
 
 export enum RepoAction {
-  transfer = 'transfer'
+  transfer = 'transfer',
+  create = 'create'
 }
 
 export class TeamInputs {
@@ -52,23 +53,47 @@ export class CollaboratorInputs {
     this.pat_token = _pat_token
   }
 }
+export interface CreateRepoOptions {
+  description?: string
+  homepage?: string
+  private?: boolean
+  visibility?: 'public' | 'private' | 'internal'
+  has_issues?: boolean
+  has_projects?: boolean
+  has_wiki?: boolean
+  has_downloads?: boolean
+  is_template?: boolean
+  team_id?: number
+  auto_init?: boolean
+  gitignore_template?: string
+  license_template?: string
+  allow_squash_merge?: boolean
+  allow_merge_commit?: boolean
+  allow_rebase_merge?: boolean
+  allow_auto_merge?: boolean
+  delete_branch_on_merge?: boolean
+}
+
 export class RepoInputs {
   action: RepoAction | undefined
   repo: string
   targetOrg: string
   requestor: string
   pat_token: string
+  createOptions?: CreateRepoOptions
   constructor(
     _action: RepoAction | undefined,
     _repo: string,
     _targetOrg: string,
     _requestor: string,
-    _pat_token: string
+    _pat_token: string,
+    _createOptions?: CreateRepoOptions
   ) {
     this.action = _action
     this.targetOrg = _targetOrg
     this.repo = _repo
     this.requestor = _requestor
     this.pat_token = _pat_token
+    this.createOptions = _createOptions
   }
 }

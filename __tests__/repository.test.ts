@@ -6,7 +6,7 @@ import {TeamInputs, CollaboratorInputs, RepoInputs} from '../src/ThemisInputs'
 import * as inputHelper from '../src/input-helper'
 
 beforeAll(() => {
-  //process.env['INPUT_PAT_TOKEN'] = 'abc'
+  process.env['INPUT_PAT_TOKEN'] = 'abc'
   process.env['INPUT_ISSUE_BODY_JSON'] =
     '{"repo":"repo1", "action":"transfer", "targetOrg":"targetOrg", "issue_name":"repoinputs"}'
   process.env['GITHUB_REPOSITORY'] = 'decyjphr-org/admin'
@@ -70,6 +70,57 @@ test('Unit test repository.transfer', async () => {
     nock('https://api.github.com')
       .post('/repos/decyjphr-org/repo1/transfer')
       .reply(200, transferResponse)
+
+    const octokit = github.getOctokit(inputs.pat_token)
+    const repository: Repository = new Repository(
+      octokit,
+      github.context.repo.owner,
+      inputs
+    )
+    await repository.sync()
+    core.setOutput(
+      'status',
+      `Successfully executed ${inputs.action} on Repository ${JSON.stringify(
+        inputs.repo
+      )}`
+    )
+  } else {
+    throw new Error('Input not a Repository input')
+  }
+})
+
+test('Unit test repository.create', async () => {
+  process.env['INPUT_ISSUE_BODY_JSON'] =
+    '{"repo":"test-repo", "action":"create", "targetOrg":"test-org", "issue_name":"repoinputs", "createOptions":{"description":"Test repository","private":false,"has_issues":true}}'
+
+  const inputs:
+    | TeamInputs
+    | CollaboratorInputs
+    | RepoInputs
+    | undefined = inputHelper.getInputs()
+
+  core.debug(`Inputs ${JSON.stringify(inputs)}`)
+  core.debug(`Inputs is Repo ${inputs instanceof RepoInputs}`)
+  if (inputs instanceof RepoInputs) {
+    expect(inputs.action).toContain('create')
+    expect(inputs.targetOrg).toContain('test-org')
+    expect(inputs.repo).toContain('test-repo')
+    expect(inputs.requestor).toBe('decyjphr')
+    expect(inputs.pat_token).toBeDefined()
+
+    const orgResponse = JSON.parse(
+      JSON.stringify(require('./fixtures/response/organization.membership.json'))
+    )
+    nock('https://api.github.com')
+      .get('/orgs/decyjphr-org/memberships/decyjphr')
+      .reply(200, orgResponse)
+
+    const createResponse = JSON.parse(
+      JSON.stringify(require('./fixtures/response/repository.create.json'))
+    )
+    nock('https://api.github.com')
+      .post('/orgs/test-org/repos')
+      .reply(201, createResponse)
 
     const octokit = github.getOctokit(inputs.pat_token)
     const repository: Repository = new Repository(

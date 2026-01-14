@@ -1,7 +1,7 @@
 import * as core from '@actions/core'
 import {GitHub} from '@actions/github/lib/utils'
 import {RepositoryData} from './InputData'
-import {RepoAction, RepoInputs} from './ThemisInputs'
+import {RepoAction, RepoInputs, CreateRepoOptions} from './ThemisInputs'
 //import {OctokitResponse} from '@octokit/types'
 
 //type OctoClientType = ReturnType<typeof github.getOctokit>
@@ -12,6 +12,7 @@ export class Repository {
   targetOrg: string
   repo: string
   requestor: string
+  createOptions?: CreateRepoOptions
 
   constructor(
     octokitClient: InstanceType<typeof GitHub>,
@@ -24,6 +25,7 @@ export class Repository {
     this.repo = inputs.repo
     this.targetOrg = inputs.targetOrg
     this.requestor = inputs.requestor
+    this.createOptions = inputs.createOptions
   }
   private async find(
     owner: string,
@@ -123,6 +125,10 @@ A person with the required permissions must approve this request to re-process i
         core.debug(`Transfering repo`)
         await this.transfer(this.repo, this.org, this.targetOrg)
         break
+      case RepoAction.create:
+        core.debug(`Creating repo`)
+        await this.create(this.repo, this.targetOrg, this.createOptions)
+        break
       default:
         core.debug(`Unknown Action ${this.action}`)
         break
@@ -135,5 +141,43 @@ A person with the required permissions must approve this request to re-process i
       repo,
       new_owner: targetOrg
     })
+  }
+
+  async create(
+    name: string,
+    org: string,
+    options?: CreateRepoOptions
+  ): Promise<RepositoryData> {
+    try {
+      const response = await this.octokitClient.repos.createInOrg({
+        org,
+        name,
+        description: options?.description,
+        homepage: options?.homepage,
+        private: options?.private,
+        visibility: options?.visibility,
+        has_issues: options?.has_issues,
+        has_projects: options?.has_projects,
+        has_wiki: options?.has_wiki,
+        has_downloads: options?.has_downloads,
+        is_template: options?.is_template,
+        team_id: options?.team_id,
+        auto_init: options?.auto_init,
+        gitignore_template: options?.gitignore_template,
+        license_template: options?.license_template,
+        allow_squash_merge: options?.allow_squash_merge,
+        allow_merge_commit: options?.allow_merge_commit,
+        allow_rebase_merge: options?.allow_rebase_merge,
+        allow_auto_merge: options?.allow_auto_merge,
+        delete_branch_on_merge: options?.delete_branch_on_merge
+      })
+      core.info(
+        `Repository ${response.data.name} created successfully in ${org}`
+      )
+      return {name: response.data.name}
+    } catch (e) {
+      core.error(`Failed to create repository ${name} in ${org}: ${e}`)
+      throw e
+    }
   }
 }
